@@ -1,0 +1,162 @@
+"use client";
+
+import * as React from "react";
+import {
+  Home,
+  Star,
+  Compass,
+  Search,
+  Plus,
+  FolderPlus,
+  ChevronDown,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+// Navigation menu items
+const navItems = [
+  { title: "Home", icon: Home },
+  { title: "Starred", icon: Star },
+  { title: "Browse", icon: Compass },
+];
+
+export function DashboardSidebar() {
+  const [activeItem, setActiveItem] = React.useState("Home");
+
+  return (
+    <Sidebar className="border-r border-border bg-sidebar" collapsible="icon">
+      {/* Workspace Header */}
+      <SidebarHeader className="p-3 pb-2 gap-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-2">
+        <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Workspace Avatar */}
+            <div
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#f8b4a0] dark:bg-[#d97757] text-xs font-bold text-neutral-900 select-none shadow-xs"
+              title="nil"
+            >
+              NI
+            </div>
+
+            {/* Workspace Name & Chevron - hidden when collapsed */}
+            <div className="flex items-center gap-1 min-w-0 group-data-[collapsible=icon]:hidden">
+              <span className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
+                nil
+              </span>
+              <ChevronDown className="size-3 text-muted-foreground shrink-0" />
+            </div>
+          </div>
+
+          {/* New Workspace Button - hidden when collapsed */}
+          <Button
+            variant="outline"
+            size="icon-xs"
+            className="size-7 rounded-md border-border bg-background hover:bg-muted shrink-0 group-data-[collapsible=icon]:hidden"
+            title="Create new workspace"
+          >
+            <Plus className="size-3.5 text-muted-foreground" />
+          </Button>
+        </div>
+
+        {/* Search Bar (Expanded state) */}
+        <div className="flex items-center gap-1.5 pt-1 group-data-[collapsible=icon]:hidden">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by title or to..."
+              className="h-8 pl-8 text-xs bg-muted/40 dark:bg-neutral-900 border-border rounded-lg placeholder:text-muted-foreground focus-visible:ring-1"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon-xs"
+            className="size-8 rounded-lg border-border bg-background hover:bg-muted shrink-0"
+            title="Quick add"
+          >
+            <Plus className="size-3.5 text-muted-foreground" />
+          </Button>
+        </div>
+
+        {/* Search Icon Button (Collapsed icon state) */}
+        <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center pt-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="size-8 text-muted-foreground hover:text-foreground"
+            title="Search"
+          >
+            <Search className="size-4" />
+          </Button>
+        </div>
+      </SidebarHeader>
+
+      {/* Main Navigation */}
+      <SidebarContent className="px-2 pt-2 gap-4 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:gap-1">
+        <SidebarGroup className="p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isSelected = activeItem === item.title;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      isActive={isSelected}
+                      tooltip={item.title}
+                      onClick={() => setActiveItem(item.title)}
+                      className={`h-9 px-3 rounded-lg text-sm transition-colors ${
+                        isSelected
+                          ? "bg-neutral-200/70 dark:bg-neutral-800 text-foreground font-semibold"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.title}
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Spaces Section - hidden completely in icon collapsed mode */}
+        <SidebarGroup className="p-0 pt-2 border-t border-border/60 group-data-[collapsible=icon]:hidden">
+          <div className="flex items-center justify-between px-2 pb-1.5">
+            <SidebarGroupLabel className="p-0 text-xs font-semibold text-foreground/80 tracking-normal h-auto">
+              Spaces
+            </SidebarGroupLabel>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="size-6 text-muted-foreground hover:text-foreground"
+              title="Add space"
+            >
+              <FolderPlus className="size-3.5" />
+            </Button>
+          </div>
+          <div className="px-2 py-1 text-xs text-muted-foreground leading-relaxed">
+            Create a Space to group Boards or Docs together in a shared place
+            for your team or project.
+          </div>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarRail />
+    </Sidebar>
+  );
+}

@@ -2,11 +2,15 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import type { Metadata } from "next";
 import Provider from "./provider";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Next.js Premium Startup Boilerplate",
-  description:
-    "Created using the ultimate interactive Next.js stack generator CLI.",
+  title: "Agentic Whiteboard",
+  description: "Collaborative whiteboard and workspace platform.",
 };
 
 const isClerkConfigured =
@@ -18,19 +22,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const content = (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <Provider>{children}</Provider>
+    </ThemeProvider>
+  );
+
   if (!isClerkConfigured) {
     return (
-      <html lang="en">
-        <body style={{ margin: 0, padding: 0 }}>{children}</body>
+      <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+        <body className="m-0 p-0 antialiased bg-background text-foreground">
+          {content}
+        </body>
       </html>
     );
   }
 
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body style={{ margin: 0, padding: 0 }}>
-          <Provider>{children}</Provider>
+      <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+        <body className="m-0 p-0 antialiased bg-background text-foreground">
+          {content}
         </body>
       </html>
     </ClerkProvider>
