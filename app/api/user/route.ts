@@ -5,23 +5,30 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const user = await currentUser();
-  if (user) {
+  const email = user?.primaryEmailAddress?.emailAddress;
+
+  if (user && email) {
+    // Check if user already exists
     const userData = await db
       .select()
       .from(users)
-      .where(eq(user.primaryEmailAddress?.emailAddress, users.email));
+      .where(eq(users.email, email));
+
     if (userData.length > 0) {
       return NextResponse.json(userData[0]);
-    } else {
-      const res = await db
-        .insert(users)
-        .values({
-          name: user?.fullName,
-          email: user?.primaryEmailAddress?.emailAddress ?? "",
-        })
-        .returning();
-      return NextResponse.json(res[0]);
     }
+
+    // Insert new user into database
+    const res = await db
+      .insert(users)
+      .values({
+        name: user.fullName ?? "",
+        email: email,
+      })
+      .returning();
+
+    return NextResponse.json(res[0]);
   }
-  return NextResponse.json({ message: "USER not found" });
+
+  return NextResponse.json({ message: "USER not found" }, { status: 401 });
 }
