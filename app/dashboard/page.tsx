@@ -6,8 +6,6 @@ import { RecentsSection } from "@/components/dashboard/recents-section";
 
 // Main dashboard view
 export default async function DashboardPage() {
-  await auth.protect();
-
   return (
     <div className="flex flex-col w-full pb-12">
       {/* Dynamic time-of-day greeting header with Clerk user */}

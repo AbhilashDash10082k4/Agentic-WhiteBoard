@@ -8,12 +8,16 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const posts = pgTable("posts", {
+export const boards = pgTable("boards", {
   id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  content: text("content"),
-  authorId: serial("author_id").references(() => users.id),
+  boardId: text("board_id").notNull().unique(),
+  name: text("name"),
+  userId: integer("user_id").references(() => users.id),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Board = typeof boards.$inferSelect;
+export type NewBoard = typeof boards.$inferInsert;
