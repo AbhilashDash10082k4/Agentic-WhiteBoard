@@ -2,17 +2,12 @@
 
 import * as React from "react";
 import { UserButton } from "@clerk/nextjs";
-import {
-  Users,
-  Gift,
-  Bell,
-  ChevronDown,
-  Sparkles,
-} from "lucide-react";
+import { Users, Gift, Bell, ChevronDown, Sparkles } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AnimatedUpgradeButton } from "@/components/dashboard/animated-upgrade-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,16 +39,18 @@ export function DashboardNavbar() {
 
           {/* Plan Dropdown */}
           <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground gap-1"
-              >
-                <span>Free plan</span>
-                <ChevronDown className="size-3" />
-              </Button>
-            } />
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground gap-1"
+                >
+                  <span>Free plan</span>
+                  <ChevronDown className="size-3" />
+                </Button>
+              }
+            />
             <DropdownMenuContent align="start" className="w-44">
               <DropdownMenuItem className="text-xs">
                 Free plan (Active)
@@ -79,13 +76,8 @@ export function DashboardNavbar() {
           <span>Invite members</span>
         </Button>
 
-        {/* Upgrade Button */}
-        <Button
-          size="sm"
-          className="h-8 rounded-lg bg-blue-600 px-3.5 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition-colors"
-        >
-          Upgrade
-        </Button>
+        {/* Upgrade Button with animated gradient border */}
+        <AnimatedUpgradeButton showIcon>Upgrade</AnimatedUpgradeButton>
 
         {/* What's New / Rewards */}
         <Button
@@ -115,7 +107,7 @@ export function DashboardNavbar() {
           <UserButton
             appearance={{
               elements: {
-                userButtonAvatarBox: "size-8 ring-1 ring-border shadow-xs",
+                userButtonAvatarBox: "size-8 ring-1 ring-border shadow-xs cursor-pointer",
               },
             }}
           />
@@ -124,4 +116,3 @@ export function DashboardNavbar() {
     </header>
   );
 }
-

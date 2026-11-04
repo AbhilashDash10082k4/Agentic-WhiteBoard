@@ -4,13 +4,11 @@ import * as React from "react";
 import {
   LayoutGrid,
   List,
-  CheckCircle2,
-  Lightbulb,
-  Boxes,
+  FolderOpen,
+  Plus,
   MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
 
 interface RecentBoard {
   id: string;
@@ -20,58 +18,24 @@ interface RecentBoard {
   space?: string;
   lastOpened: string;
   owner: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
 }
 
-export function RecentsSection() {
-  const { user } = useUser();
+interface RecentsSectionProps {
+  boards?: RecentBoard[];
+  onCreateBoard?: () => void;
+}
+
+export function RecentsSection({
+  boards = [],
+  onCreateBoard,
+}: RecentsSectionProps) {
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
-
-  const userName = user?.fullName || "Abhilash Dash";
-
-  const recentBoards: RecentBoard[] = [
-    {
-      id: "board-1",
-      name: "2026 It izz",
-      modifiedText: `Modified by ${userName}`,
-      lastOpened: "Oct 30",
-      owner: userName,
-      icon: (
-        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400">
-          <CheckCircle2 className="size-4" />
-        </div>
-      ),
-    },
-    {
-      id: "board-2",
-      name: "Concepts",
-      modifiedText: `Modified by ${userName}`,
-      lastOpened: "Oct 30",
-      owner: userName,
-      icon: (
-        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
-          <Lightbulb className="size-4" />
-        </div>
-      ),
-    },
-    {
-      id: "board-3",
-      name: "Project Architectures",
-      modifiedText: `Modified by ${userName}`,
-      lastOpened: "Jun 27",
-      owner: userName,
-      icon: (
-        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400">
-          <Boxes className="size-4" />
-        </div>
-      ),
-    },
-  ];
 
   return (
     <section className="w-full">
       {/* Section Top Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
           Jump back to recents
         </h2>
@@ -99,8 +63,34 @@ export function RecentsSection() {
         </div>
       </div>
 
-      {/* Recents Container */}
-      {viewMode === "list" ? (
+      {/* Empty State when no boards are present */}
+      {boards.length === 0 ? (
+        <div className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dotted border-border/80 bg-muted/10 px-6 py-14 text-center transition-all">
+          {/* Folder Icon */}
+          <div className="mb-3.5 flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground shadow-2xs">
+            <FolderOpen className="size-6 text-muted-foreground" />
+          </div>
+
+          {/* Create message */}
+          <h3 className="text-sm font-semibold text-foreground tracking-tight">
+            No boards yet
+          </h3>
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground leading-relaxed">
+            Create your first whiteboard to collaborate with your team, map ideas, and brainstorm together.
+          </p>
+
+          {/* + Create Action Button */}
+          <Button
+            onClick={onCreateBoard}
+            size="sm"
+            className="mt-4 h-8 gap-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold px-3.5 shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="size-3.5" />
+            <span>Create</span>
+          </Button>
+        </div>
+      ) : viewMode === "list" ? (
+        /* List / Table View */
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -114,12 +104,11 @@ export function RecentsSection() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {recentBoards.map((board) => (
+              {boards.map((board) => (
                 <tr
                   key={board.id}
                   className="group hover:bg-muted/40 transition-colors cursor-pointer"
                 >
-                  {/* Title & icon */}
                   <td className="py-3 pr-4">
                     <div className="flex items-center gap-3">
                       {board.icon}
@@ -133,28 +122,14 @@ export function RecentsSection() {
                       </div>
                     </div>
                   </td>
-
-                  {/* Online users */}
-                  <td className="py-3 text-muted-foreground hidden sm:table-cell">
-                    -
-                  </td>
-
-                  {/* Space */}
+                  <td className="py-3 text-muted-foreground hidden sm:table-cell">-</td>
                   <td className="py-3 text-muted-foreground hidden md:table-cell">
                     {board.space || "-"}
                   </td>
-
-                  {/* Last opened */}
-                  <td className="py-3 text-muted-foreground">
-                    {board.lastOpened}
-                  </td>
-
-                  {/* Owner */}
+                  <td className="py-3 text-muted-foreground">{board.lastOpened}</td>
                   <td className="py-3 text-foreground/80 font-medium truncate max-w-[140px]">
                     {board.owner}
                   </td>
-
-                  {/* Options */}
                   <td className="py-3 text-right">
                     <Button
                       variant="ghost"
@@ -170,9 +145,9 @@ export function RecentsSection() {
           </table>
         </div>
       ) : (
-        /* Grid view fallback */
+        /* Grid View */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {recentBoards.map((board) => (
+          {boards.map((board) => (
             <div
               key={board.id}
               className="group flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 hover:shadow-xs hover:border-foreground/20 transition-all cursor-pointer h-36"
@@ -197,4 +172,3 @@ export function RecentsSection() {
     </section>
   );
 }
-

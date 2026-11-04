@@ -61,7 +61,7 @@ export function TemplateSection() {
           <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
             Start something new
           </h2>
-          <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-0.5 transition-colors">
+          <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-0.5 transition-colors cursor-pointer">
             <span>Templates for All roles</span>
             <ChevronDown className="size-3" />
           </button>
