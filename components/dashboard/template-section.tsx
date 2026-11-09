@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Plus, ChevronDown, Sparkles, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -67,41 +68,52 @@ export function TemplateSection() {
           </button>
         </div>
 
-        <Button
-          size="sm"
-          className="h-8 gap-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold px-3"
-        >
-          <Plus className="size-3.5" />
-          <span>Create</span>
-        </Button>
+        <Link href="/workspace">
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold px-3"
+          >
+            <Plus className="size-3.5" />
+            <span>Create</span>
+          </Button>
+        </Link>
       </div>
 
       {/* 3 Placeholders Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {templates.map((tpl) => (
-          <div key={tpl.id} className="group flex flex-col gap-2 cursor-pointer">
-            <div
-              className={`relative flex h-28 w-full items-center justify-center rounded-xl border transition-all duration-200 overflow-hidden ${
-                tpl.isCustomNew
-                  ? "border-dashed border-border hover:border-foreground/40 bg-muted/20 hover:bg-muted/40"
-                  : "border-border/80 bg-muted/15 hover:bg-muted/30 hover:shadow-xs hover:border-border"
-              }`}
-            >
-              {tpl.isCustomNew ? (
-                <div className="flex size-10 items-center justify-center rounded-full bg-background/80 shadow-xs group-hover:scale-105 transition-transform">
-                  <Plus className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                </div>
-              ) : (
-                tpl.previewSnippet
-              )}
+        {templates.map((tpl) => {
+          const cardContent = (
+            <div className="group flex flex-col gap-2 cursor-pointer">
+              <div
+                className={`relative flex h-28 w-full items-center justify-center rounded-xl border transition-all duration-200 overflow-hidden ${
+                  tpl.isCustomNew
+                    ? "border-dashed border-border hover:border-foreground/40 bg-muted/20 hover:bg-muted/40"
+                    : "border-border/80 bg-muted/15 hover:bg-muted/30 hover:shadow-xs hover:border-border"
+                }`}
+              >
+                {tpl.isCustomNew ? (
+                  <div className="flex size-10 items-center justify-center rounded-full bg-background/80 shadow-xs group-hover:scale-105 transition-transform">
+                    <Plus className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </div>
+                ) : (
+                  tpl.previewSnippet
+                )}
+              </div>
+              <span className="text-xs font-medium text-foreground/90 group-hover:text-foreground">
+                {tpl.title}
+              </span>
             </div>
-            <span className="text-xs font-medium text-foreground/90 group-hover:text-foreground">
-              {tpl.title}
-            </span>
-          </div>
-        ))}
+          );
+
+          return tpl.isCustomNew ? (
+            <Link key={tpl.id} href="/workspace">
+              {cardContent}
+            </Link>
+          ) : (
+            <div key={tpl.id}>{cardContent}</div>
+          );
+        })}
       </div>
     </section>
   );
 }
-

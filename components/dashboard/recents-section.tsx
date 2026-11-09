@@ -1,36 +1,45 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import axios from "axios";
 import {
   LayoutGrid,
   List,
   FolderOpen,
   Plus,
   MoreHorizontal,
+  Layout,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@clerk/nextjs";
+import { type Board } from "@/db";
 
-interface RecentBoard {
-  id: string;
-  name: string;
-  modifiedText: string;
-  onlineUsers?: number;
-  space?: string;
-  lastOpened: string;
-  owner: string;
-  icon?: React.ReactNode;
-}
-
-interface RecentsSectionProps {
-  boards?: RecentBoard[];
-  onCreateBoard?: () => void;
-}
-
-export function RecentsSection({
-  boards = [],
-  onCreateBoard,
-}: RecentsSectionProps) {
+export function RecentsSection() {
+  const { user } = useUser();
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
+  const [boards, setBoards] = React.useState<Board[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const userName = user?.fullName || user?.firstName || "You";
+
+  // Fetch all boards created by authenticated user
+  React.useEffect(() => {
+    async function loadBoards() {
+      try {
+        const res = await axios.get("/api/board");
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setBoards(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch boards:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadBoards();
+  }, []);
 
   return (
     <section className="w-full">
@@ -45,7 +54,7 @@ export function RecentsSection({
           <Button
             variant={viewMode === "grid" ? "secondary" : "ghost"}
             size="icon-xs"
-            className="size-7 rounded-md text-muted-foreground hover:text-foreground"
+            className="size-7 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={() => setViewMode("grid")}
             title="Grid view"
           >
@@ -54,7 +63,7 @@ export function RecentsSection({
           <Button
             variant={viewMode === "list" ? "secondary" : "ghost"}
             size="icon-xs"
-            className="size-7 rounded-md text-muted-foreground hover:text-foreground"
+            className="size-7 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={() => setViewMode("list")}
             title="List view"
           >
@@ -63,15 +72,18 @@ export function RecentsSection({
         </div>
       </div>
 
-      {/* Empty State when no boards are present */}
-      {boards.length === 0 ? (
+      {/* Loading Skeleton */}
+      {loading ? (
+        <div className="flex h-36 w-full items-center justify-center rounded-2xl border border-border/40 bg-muted/10">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : boards.length === 0 ? (
+        /* Empty State when no boards are present */
         <div className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dotted border-border/80 bg-muted/10 px-6 py-14 text-center transition-all">
-          {/* Folder Icon */}
           <div className="mb-3.5 flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground shadow-2xs">
             <FolderOpen className="size-6 text-muted-foreground" />
           </div>
 
-          {/* Create message */}
           <h3 className="text-sm font-semibold text-foreground tracking-tight">
             No boards yet
           </h3>
@@ -79,15 +91,15 @@ export function RecentsSection({
             Create your first whiteboard to collaborate with your team, map ideas, and brainstorm together.
           </p>
 
-          {/* + Create Action Button */}
-          <Button
-            onClick={onCreateBoard}
-            size="sm"
-            className="mt-4 h-8 gap-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold px-3.5 shadow-xs transition-colors cursor-pointer"
-          >
-            <Plus className="size-3.5" />
-            <span>Create</span>
-          </Button>
+          <Link href="/workspace">
+            <Button
+              size="sm"
+              className="mt-4 h-8 gap-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 text-xs font-semibold px-3.5 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="size-3.5" />
+              <span>Create</span>
+            </Button>
+          </Link>
         </div>
       ) : viewMode === "list" ? (
         /* List / Table View */
@@ -98,75 +110,99 @@ export function RecentsSection({
                 <th className="pb-2.5 font-medium min-w-[200px]">Name</th>
                 <th className="pb-2.5 font-medium hidden sm:table-cell">Online users</th>
                 <th className="pb-2.5 font-medium hidden md:table-cell">Space</th>
-                <th className="pb-2.5 font-medium">Last opened</th>
+                <th className="pb-2.5 font-medium">Created / Opened</th>
                 <th className="pb-2.5 font-medium">Owner</th>
                 <th className="pb-2.5 w-8"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {boards.map((board) => (
-                <tr
-                  key={board.id}
-                  className="group hover:bg-muted/40 transition-colors cursor-pointer"
-                >
-                  <td className="py-3 pr-4">
-                    <div className="flex items-center gap-3">
-                      {board.icon}
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-foreground text-xs sm:text-sm truncate">
-                          {board.name}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground truncate">
-                          {board.modifiedText}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 text-muted-foreground hidden sm:table-cell">-</td>
-                  <td className="py-3 text-muted-foreground hidden md:table-cell">
-                    {board.space || "-"}
-                  </td>
-                  <td className="py-3 text-muted-foreground">{board.lastOpened}</td>
-                  <td className="py-3 text-foreground/80 font-medium truncate max-w-[140px]">
-                    {board.owner}
-                  </td>
-                  <td className="py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      className="size-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {boards.map((board) => {
+                const dateStr = board.createdAt
+                  ? new Date(board.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "Recent";
+
+                return (
+                  <tr
+                    key={board.id}
+                    className="group hover:bg-muted/40 transition-colors cursor-pointer"
+                  >
+                    <td className="py-3 pr-4">
+                      <Link
+                        href={`/workspace/${board.boardId}`}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                          <Layout className="size-3.5" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm truncate hover:underline">
+                            {board.name || "Untitled"}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground truncate">
+                            ID: {board.boardId.slice(0, 8)}...
+                          </span>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="py-3 text-muted-foreground hidden sm:table-cell">-</td>
+                    <td className="py-3 text-muted-foreground hidden md:table-cell">Personal</td>
+                    <td className="py-3 text-muted-foreground">{dateStr}</td>
+                    <td className="py-3 text-foreground/80 font-medium truncate max-w-[140px]">
+                      {userName}
+                    </td>
+                    <td className="py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        className="size-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
         /* Grid View */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {boards.map((board) => (
-            <div
-              key={board.id}
-              className="group flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 hover:shadow-xs hover:border-foreground/20 transition-all cursor-pointer h-36"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {board.icon}
-                  <span className="font-semibold text-sm text-foreground truncate">
-                    {board.name}
-                  </span>
+          {boards.map((board) => {
+            const dateStr = board.createdAt
+              ? new Date(board.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })
+              : "Recent";
+
+            return (
+              <Link
+                key={board.id}
+                href={`/workspace/${board.boardId}`}
+                className="group flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 hover:shadow-xs hover:border-foreground/20 transition-all cursor-pointer h-36"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                      <Layout className="size-4" />
+                    </div>
+                    <span className="font-semibold text-sm text-foreground truncate group-hover:underline">
+                      {board.name || "Untitled"}
+                    </span>
+                  </div>
+                  <MoreHorizontal className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 </div>
-                <MoreHorizontal className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <div className="flex flex-col text-[11px] text-muted-foreground gap-0.5">
-                <span>{board.modifiedText}</span>
-                <span className="text-muted-foreground/80">Opened {board.lastOpened}</span>
-              </div>
-            </div>
-          ))}
+                <div className="flex flex-col text-[11px] text-muted-foreground gap-0.5">
+                  <span>Owner: {userName}</span>
+                  <span className="text-muted-foreground/80">Created {dateStr}</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </section>

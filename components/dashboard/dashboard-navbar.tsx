@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { Users, Gift, Bell, ChevronDown, Sparkles } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -23,11 +24,14 @@ export function DashboardNavbar() {
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
         <div className="flex items-center gap-2">
-          {/* Brand Logo */}
-          <div className="flex items-center gap-1 font-extrabold text-xl tracking-tight text-foreground select-none">
-            <span>miro</span>
+          {/* Brand Logo pointing to dashboard */}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1 font-extrabold text-xl tracking-tight text-foreground select-none cursor-pointer hover:opacity-90 transition-opacity"
+          >
+            <span>Agentic WhiteBoard</span>
             <span className="text-amber-400 text-base leading-none">✱</span>
-          </div>
+          </Link>
 
           {/* Beta Tag */}
           <Badge
@@ -107,7 +111,8 @@ export function DashboardNavbar() {
           <UserButton
             appearance={{
               elements: {
-                userButtonAvatarBox: "size-8 ring-1 ring-border shadow-xs cursor-pointer",
+                userButtonAvatarBox:
+                  "size-8 ring-1 ring-border shadow-xs cursor-pointer",
               },
             }}
           />

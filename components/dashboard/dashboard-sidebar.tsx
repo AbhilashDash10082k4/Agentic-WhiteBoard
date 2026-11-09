@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Home,
   Star,
@@ -60,23 +61,23 @@ export function DashboardSidebar({
       {/* Workspace Header */}
       <SidebarHeader className="p-3 pb-2 gap-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-2">
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
-          <div className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none">
+          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none hover:opacity-90 transition-opacity">
             {/* Workspace Avatar */}
             <div
               className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#f8b4a0] dark:bg-[#d97757] text-xs font-bold text-neutral-900 select-none shadow-xs"
-              title="nil"
+              title="Agentic WhiteBoard"
             >
-              NI
+              AW
             </div>
 
             {/* Workspace Name & Chevron - hidden when collapsed */}
             <div className="flex items-center gap-1 min-w-0 group-data-[collapsible=icon]:hidden">
               <span className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
-                nil
+                Agentic WhiteBoard
               </span>
               <ChevronDown className="size-3 text-muted-foreground shrink-0" />
             </div>
-          </div>
+          </Link>
 
           {/* New Workspace Button - hidden when collapsed */}
           <Button
