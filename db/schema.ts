@@ -1,4 +1,11 @@
-import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -16,8 +23,19 @@ export const boards = pgTable("boards", {
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
+export const boardData = pgTable("boardData", {
+  id: serial("id").primaryKey(),
+  projectId: text("board_id")
+    .notNull()
+    .unique()
+    .references(() => boards.boardId),
+  appState: jsonb("appState"),
+  files: jsonb("files"),
+  elements: jsonb("elements"),
+});
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Board = typeof boards.$inferSelect;
 export type NewBoard = typeof boards.$inferInsert;
+export type BoardData = typeof boardData.$inferSelect;
+export type NewBoardData = typeof boardData.$inferInsert;
