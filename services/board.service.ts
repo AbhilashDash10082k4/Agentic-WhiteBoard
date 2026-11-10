@@ -16,6 +16,7 @@ export interface SaveBoardDataDTO {
   elements?: unknown;
   appState?: unknown;
   files?: unknown;
+  version?: number;
 }
 
 // Service containing core business logic for board creation, updates, and canvas data
@@ -90,12 +91,19 @@ export class BoardService {
       };
     }
 
-    return this.repository.upsertBoardData({
+    const result = await this.repository.upsertBoardData({
       projectId: dto.boardId,
       elements: dto.elements,
       appState: safeAppState,
       files: dto.files,
+      clientVersion: dto.version,
     });
+
+    if (result.conflict) {
+      throw new Error("OCC_CONFLICT_DETECTED");
+    }
+
+    return result.record;
   }
 
   // Retrieve canvas data by boardId

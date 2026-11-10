@@ -126,6 +126,7 @@ export class BoardController {
         elements: body.elements,
         appState: body.appState,
         files: body.files,
+        version: body.version,
       });
 
       return NextResponse.json(
@@ -133,6 +134,17 @@ export class BoardController {
         { status: 200 },
       );
     } catch (error: unknown) {
+      if (error instanceof Error && error.message === "OCC_CONFLICT_DETECTED") {
+        return NextResponse.json(
+          {
+            success: false,
+            conflict: true,
+            message: "Concurrent edit conflict: newer version exists on server.",
+          },
+          { status: 409 }
+        );
+      }
+
       const message =
         error instanceof Error ? error.message : "Internal Server Error";
       return NextResponse.json({ success: false, message }, { status: 500 });
