@@ -1,0 +1,15 @@
+/* Hide Excalidraw element properties sidebar and top-left hamburger menu */
+.excalidraw .App-menu__left,
+.excalidraw .sidebar,
+.excalidraw .sidebar--docked,
+.excalidraw .main-menu-trigger {
+  display: none !important;
+}
+
+/* Remove default Excalidraw toolbar */
+.excalidraw .shapes-section,
+.excalidraw .App-toolbar,
+.excalidraw .App-toolbar-content {
+  display: none !important;
+}
+
