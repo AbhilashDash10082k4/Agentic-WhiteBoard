@@ -79,16 +79,27 @@ export class BoardRepository {
     return records[0] ?? null;
   }
 
-  // Upsert board canvas data (elements, appState, files)
+  // Upsert board canvas data with Optimistic Concurrency Control
   async upsertBoardData(data: {
     projectId: string;
     elements?: unknown;
     appState?: unknown;
     files?: unknown;
-  }): Promise<BoardData> {
+    clientVersion?: number;
+  }): Promise<{ record: BoardData; conflict: boolean }> {
     const existing = await this.findBoardDataByBoardId(data.projectId);
 
     if (existing) {
+      // OCC Check: conflict if client version does not match existing version
+      if (
+        data.clientVersion !== undefined &&
+        existing.version !== undefined &&
+        existing.version !== data.clientVersion
+      ) {
+        return { record: existing, conflict: true };
+      }
+
+      const nextVersion = (existing.version ?? 1) + 1;
       const updated = await db
         .update(boardData)
         .set({
@@ -97,11 +108,13 @@ export class BoardRepository {
           appState:
             data.appState !== undefined ? data.appState : existing.appState,
           files: data.files !== undefined ? data.files : existing.files,
+          version: nextVersion,
+          updatedAt: new Date(),
         })
         .where(eq(boardData.projectId, data.projectId))
         .returning();
 
-      return updated[0];
+      return { record: updated[0], conflict: false };
     }
 
     const inserted = await db
@@ -111,10 +124,11 @@ export class BoardRepository {
         elements: data.elements ?? null,
         appState: data.appState ?? null,
         files: data.files ?? null,
+        version: 1,
       })
       .returning();
 
-    return inserted[0];
+    return { record: inserted[0], conflict: false };
   }
 }
 
