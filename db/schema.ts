@@ -32,6 +32,8 @@ export const boardData = pgTable("boardData", {
   appState: jsonb("appState"),
   files: jsonb("files"),
   elements: jsonb("elements"),
+  version: integer("version").notNull().default(1),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
