@@ -7,6 +7,7 @@ import { Loader2, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "@/hooks/use-toast";
 import { CanvasToolbar } from "@/components/workspace/canvas-toolbar";
+import { FloatingToolBar } from "@/components/workspace/FloatingToolBar";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 
@@ -20,14 +21,14 @@ const Excalidraw = dynamic(
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     ),
-  },
+  }
 );
 
 // Deterministic SHA-256 canvas state hash for dirty checking
 async function computeCanvasHash(
   elements: readonly any[],
   appState: any,
-  files: any,
+  files: any
 ): Promise<string> {
   const normalized = {
     elements: (elements || []).map((el) => ({
@@ -62,11 +63,11 @@ interface WhiteboardProps {
 export function Whiteboard({ boardId }: WhiteboardProps) {
   const [mounted, setMounted] = React.useState(false);
   const [initialData, setInitialData] = React.useState<any>(null);
-  const [saveStatus, setSaveStatus] = React.useState<
-    "idle" | "saving" | "saved"
-  >("idle");
+  const [saveStatus, setSaveStatus] = React.useState<"idle" | "saving" | "saved">("idle");
   const [activeTool, setActiveTool] = React.useState<string>("selection");
   const [apiReady, setApiReady] = React.useState<any>(null);
+  const [selectedElement, setSelectedElement] = React.useState<any>(null);
+  const [floatingPos, setFloatingPos] = React.useState<{ x: number; y: number } | null>(null);
 
   const { resolvedTheme } = useTheme();
   const excalidrawAPIRef = React.useRef<any>(null);
@@ -95,16 +96,13 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const saveCanvasChanges = async () => {
     if (!latestDataRef.current || !boardId) return;
 
-    // Compute canvas hash and skip if identical to last save (Dirty check)
     const currentHash = await computeCanvasHash(
       latestDataRef.current.elements,
       latestDataRef.current.appState,
-      latestDataRef.current.files,
+      latestDataRef.current.files
     );
 
-    if (currentHash === lastSavedHashRef.current) {
-      return;
-    }
+    if (currentHash === lastSavedHashRef.current) return;
 
     setSaveStatus("saving");
     try {
@@ -117,12 +115,10 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       });
 
       if (res.data?.success && res.data?.data) {
-        currentVersionRef.current =
-          res.data.data.version ?? currentVersionRef.current + 1;
+        currentVersionRef.current = res.data.data.version ?? (currentVersionRef.current + 1);
         lastSavedHashRef.current = currentHash;
         setSaveStatus("saved");
 
-        // Trigger shadcn toast notification
         toast({
           title: "Canvas saved",
           description: `Board synced (v${currentVersionRef.current}).`,
@@ -133,8 +129,6 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       }
     } catch (error: any) {
       setSaveStatus("idle");
-
-      // Handle Optimistic Concurrency Control conflict
       if (error?.response?.status === 409) {
         toast({
           title: "Sync Conflict",
@@ -143,8 +137,6 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         });
         return;
       }
-
-      console.error("Auto-save failed:", error);
       toast({
         title: "Save failed",
         description: "Could not auto-save canvas changes.",
@@ -153,23 +145,45 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     }
   };
 
-  // Excalidraw change handler: syncs active tool and debounces save to every 10s
+  // Excalidraw change handler: syncs active tool, selected element position, and debounces save
   const handleCanvasChange = (
     elements: readonly any[],
     appState: any,
-    files: any,
+    files: any
   ) => {
-    // Sync active tool state from Excalidraw to custom toolbar
     if (appState?.activeTool?.type && appState.activeTool.type !== activeTool) {
       setActiveTool(appState.activeTool.type);
     }
 
-    // Skip change persistence during initial hydration
-    if (isInitialLoadRef.current) return;
+    // Calculate position for floating element properties toolbar
+    const selectedIds = Object.keys(appState?.selectedElementIds || {}).filter(
+      (id) => appState.selectedElementIds[id]
+    );
 
+    if (selectedIds.length === 1) {
+      const el = elements.find((item: any) => item.id === selectedIds[0] && !item.isDeleted);
+      if (el) {
+        setSelectedElement(el);
+        const zoom = appState.zoom?.value ?? 1;
+        const screenX = (el.x + (appState.scrollX ?? 0)) * zoom;
+        const screenY = (el.y + (appState.scrollY ?? 0)) * zoom;
+
+        setFloatingPos({
+          x: Math.max(16, screenX),
+          y: Math.max(70, screenY - 54),
+        });
+      } else {
+        setSelectedElement(null);
+        setFloatingPos(null);
+      }
+    } else {
+      setSelectedElement(null);
+      setFloatingPos(null);
+    }
+
+    if (isInitialLoadRef.current) return;
     latestDataRef.current = { elements, appState, files };
 
-    // Schedule save every 10 seconds if not already scheduled
     if (!saveTimerRef.current) {
       saveTimerRef.current = setTimeout(() => {
         saveTimerRef.current = null;
@@ -187,9 +201,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         const res = await axios.get(`/api/board/data?boardId=${boardId}`);
         if (res.data?.success && res.data?.data && isMounted) {
           const { elements, appState, files, version } = res.data.data;
-          if (version) {
-            currentVersionRef.current = version;
-          }
+          if (version) currentVersionRef.current = version;
 
           if (elements || appState) {
             setInitialData({
@@ -197,12 +209,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
               appState: appState || {},
             });
 
-            // Seed initial hash to prevent false dirty save on mount
-            const initialHash = await computeCanvasHash(
-              elements,
-              appState,
-              files,
-            );
+            const initialHash = await computeCanvasHash(elements, appState, files);
             lastSavedHashRef.current = initialHash;
 
             if (excalidrawAPIRef.current) {
@@ -228,15 +235,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       }
     }
 
-    if (boardId) {
-      loadBoardData();
-    }
+    if (boardId) loadBoardData();
 
     return () => {
       isMounted = false;
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [boardId]);
 
@@ -250,14 +253,25 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
   return (
     <div className="relative size-full pt-14 bg-background">
-      {/* Custom Floating Toolbar */}
+      {/* Custom Floating Left Toolset */}
       <CanvasToolbar
         excalidrawAPI={apiReady}
         activeTool={activeTool}
         onSelectTool={setActiveTool}
       />
 
-      {/* Subtle auto-save status indicator badge */}
+      {/* Dynamic Floating Element Properties Toolset */}
+      <FloatingToolBar
+        selectedElement={selectedElement}
+        position={floatingPos}
+        excalidrawAPI={apiReady}
+        onClose={() => {
+          setSelectedElement(null);
+          setFloatingPos(null);
+        }}
+      />
+
+      {/* Auto-save status indicator */}
       <div className="absolute right-4 bottom-4 z-20 pointer-events-none">
         {saveStatus === "saving" && (
           <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-xs backdrop-blur-md animate-in fade-in">
