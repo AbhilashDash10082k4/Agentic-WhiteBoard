@@ -24,6 +24,14 @@
   display: none !important;
 }
 
+/* Remove default Excalidraw bottom footer and help buttons */
+.excalidraw .layer-ui__wrapper__footer-left,
+.excalidraw .layer-ui__wrapper__footer-right,
+.excalidraw .footer-center,
+.excalidraw .help-icon {
+  display: none !important;
+}
+
 /* Unified canvas background matching application theme */
 .excalidraw,
 .excalidraw .excalidraw-container {

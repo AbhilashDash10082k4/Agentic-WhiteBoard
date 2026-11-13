@@ -16,10 +16,32 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/nextjs";
 import { type Board } from "@/db";
 
+type BoardItem = Board & { updatedAt?: string | Date | null };
+
+// Format timestamp dynamically: "Today" for current date, else "MMM D"
+function formatBoardDate(dateVal?: string | Date | null): string {
+  if (!dateVal) return "Today";
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return "Today";
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) return "Today";
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function RecentsSection() {
   const { user } = useUser();
   const [viewMode, setViewMode] = React.useState<"list" | "grid">("list");
-  const [boards, setBoards] = React.useState<Board[]>([]);
+  const [boards, setBoards] = React.useState<BoardItem[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const userName = user?.fullName || user?.firstName || "You";
@@ -88,7 +110,8 @@ export function RecentsSection() {
             No boards yet
           </h3>
           <p className="mt-1 max-w-sm text-xs text-muted-foreground leading-relaxed">
-            Create your first whiteboard to collaborate with your team, map ideas, and brainstorm together.
+            Create your first whiteboard to collaborate with your team, map
+            ideas, and brainstorm together.
           </p>
 
           <Link href="/workspace">
@@ -108,8 +131,12 @@ export function RecentsSection() {
             <thead>
               <tr className="border-b border-border/60 text-muted-foreground font-medium">
                 <th className="pb-2.5 font-medium min-w-[200px]">Name</th>
-                <th className="pb-2.5 font-medium hidden sm:table-cell">Online users</th>
-                <th className="pb-2.5 font-medium hidden md:table-cell">Space</th>
+                <th className="pb-2.5 font-medium hidden sm:table-cell">
+                  Online users
+                </th>
+                <th className="pb-2.5 font-medium hidden md:table-cell">
+                  Space
+                </th>
                 <th className="pb-2.5 font-medium">Created / Opened</th>
                 <th className="pb-2.5 font-medium">Owner</th>
                 <th className="pb-2.5 w-8"></th>
@@ -117,12 +144,7 @@ export function RecentsSection() {
             </thead>
             <tbody className="divide-y divide-border/40">
               {boards.map((board) => {
-                const dateStr = board.createdAt
-                  ? new Date(board.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : "Recent";
+                const dateStr = formatBoardDate(board.updatedAt || board.createdAt);
 
                 return (
                   <tr
@@ -141,14 +163,15 @@ export function RecentsSection() {
                           <span className="font-semibold text-foreground text-xs sm:text-sm truncate hover:underline">
                             {board.name || "Untitled"}
                           </span>
-                          <span className="text-[11px] text-muted-foreground truncate">
-                            ID: {board.boardId.slice(0, 8)}...
-                          </span>
                         </div>
                       </Link>
                     </td>
-                    <td className="py-3 text-muted-foreground hidden sm:table-cell">-</td>
-                    <td className="py-3 text-muted-foreground hidden md:table-cell">Personal</td>
+                    <td className="py-3 text-muted-foreground hidden sm:table-cell">
+                      -
+                    </td>
+                    <td className="py-3 text-muted-foreground hidden md:table-cell">
+                      Personal
+                    </td>
                     <td className="py-3 text-muted-foreground">{dateStr}</td>
                     <td className="py-3 text-foreground/80 font-medium truncate max-w-[140px]">
                       {userName}
@@ -172,12 +195,7 @@ export function RecentsSection() {
         /* Grid View */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {boards.map((board) => {
-            const dateStr = board.createdAt
-              ? new Date(board.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              : "Recent";
+            const dateStr = formatBoardDate(board.updatedAt || board.createdAt);
 
             return (
               <Link
@@ -198,7 +216,9 @@ export function RecentsSection() {
                 </div>
                 <div className="flex flex-col text-[11px] text-muted-foreground gap-0.5">
                   <span>Owner: {userName}</span>
-                  <span className="text-muted-foreground/80">Created {dateStr}</span>
+                  <span className="text-muted-foreground/80">
+                    Created {dateStr}
+                  </span>
                 </div>
               </Link>
             );

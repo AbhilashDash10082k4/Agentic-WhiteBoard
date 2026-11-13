@@ -8,7 +8,7 @@ import {
   type User,
   type BoardData,
 } from "@/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 // Repository handles direct database interactions for boards and user lookups
 export class BoardRepository {
@@ -42,6 +42,16 @@ export class BoardRepository {
         .where(eq(boards.boardId, data.boardId))
         .returning();
 
+      // Bump recency on board edit
+      try {
+        await db
+          .update(boardData)
+          .set({ updatedAt: new Date() })
+          .where(eq(boardData.projectId, data.boardId));
+      } catch {
+        // boardData might not exist yet
+      }
+
       return updated[0];
     }
 
@@ -59,13 +69,31 @@ export class BoardRepository {
     return records[0] ?? null;
   }
 
-  // Find all boards owned by user email
-  async findBoardsByUserEmail(email: string): Promise<Board[]> {
-    return db
-      .select()
+  // Find all boards owned by user email, ordered by latest edited first
+  async findBoardsByUserEmail(
+    email: string
+  ): Promise<(Board & { updatedAt?: Date | null })[]> {
+    const records = await db
+      .select({
+        id: boards.id,
+        boardId: boards.boardId,
+        name: boards.name,
+        userId: boards.userId,
+        createdBy: boards.createdBy,
+        createdAt: boards.createdAt,
+        updatedAt: boardData.updatedAt,
+      })
       .from(boards)
+      .leftJoin(boardData, eq(boards.boardId, boardData.projectId))
       .where(eq(boards.createdBy, email))
-      .orderBy(desc(boards.createdAt));
+      .orderBy(
+        desc(sql`COALESCE(${boardData.updatedAt}, ${boards.createdAt})`)
+      );
+
+    return records.map((r) => ({
+      ...r,
+      updatedAt: r.updatedAt ?? r.createdAt,
+    }));
   }
 
   // Find canvas elements, appState, and files for a board

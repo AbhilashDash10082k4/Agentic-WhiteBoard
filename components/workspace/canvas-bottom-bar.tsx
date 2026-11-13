@@ -13,9 +13,13 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface CanvasBottomBarProps {
   zoom?: number;
+  isSidebarOpen?: boolean;
+  isChatOpen?: boolean;
+  onOpenChat?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onResetZoom?: () => void;
@@ -23,6 +27,9 @@ interface CanvasBottomBarProps {
 
 export function CanvasBottomBar({
   zoom = 100,
+  isSidebarOpen = false,
+  isChatOpen = false,
+  onOpenChat,
   onZoomIn,
   onZoomOut,
   onResetZoom,
@@ -31,17 +38,23 @@ export function CanvasBottomBar({
   const [promptText, setPromptText] = React.useState("");
 
   return (
-    <footer className="fixed bottom-3 left-0 right-0 z-20 pointer-events-none flex items-end justify-between px-4">
+    <footer
+      className={cn(
+        "fixed bottom-3 right-0 z-30 pointer-events-none flex items-end justify-between px-4 transition-all duration-200",
+        isSidebarOpen ? "left-64" : "left-0"
+      )}
+    >
       {/* Spacer on left */}
       <div className="w-16 hidden md:block" />
 
       {/* Center AI prompt & suggested quick actions */}
       <div className="flex flex-col items-center gap-2 pointer-events-auto max-w-lg w-full mx-auto">
         {/* Suggestion Pills */}
-        {showPills && (
+        {showPills && !isChatOpen && (
           <div className="flex flex-wrap items-center justify-center gap-1.5 transition-all animate-in fade-in slide-in-from-bottom-2">
             <button
               type="button"
+              onClick={onOpenChat}
               className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3 py-1 text-xs font-medium text-foreground hover:bg-muted shadow-xs transition-colors cursor-pointer"
             >
               <GraduationCap className="size-3.5 text-blue-500" />
@@ -50,6 +63,7 @@ export function CanvasBottomBar({
 
             <button
               type="button"
+              onClick={onOpenChat}
               className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3 py-1 text-xs font-medium text-foreground hover:bg-muted shadow-xs transition-colors cursor-pointer"
             >
               <Network className="size-3.5 text-orange-500" />
@@ -58,6 +72,7 @@ export function CanvasBottomBar({
 
             <button
               type="button"
+              onClick={onOpenChat}
               className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3 py-1 text-xs font-medium text-foreground hover:bg-muted shadow-xs transition-colors cursor-pointer"
             >
               <Presentation className="size-3.5 text-yellow-500" />
@@ -76,23 +91,27 @@ export function CanvasBottomBar({
         )}
 
         {/* Floating Prompt Bar */}
-        <div className="flex h-10 w-full items-center gap-2 rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md px-3 shadow-md focus-within:ring-1 focus-within:ring-ring">
-          <Plus className="size-4 text-muted-foreground shrink-0 cursor-pointer hover:text-foreground" />
-          <input
-            type="text"
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-            placeholder="Where shall we start?"
-            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none font-medium"
-          />
-          <button
-            type="button"
-            className="size-7 rounded-lg text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer hover:bg-muted"
-            title="Voice prompt"
+        {!isChatOpen && (
+          <div
+            onClick={onOpenChat}
+            className="flex h-10 w-full items-center gap-2 rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md px-3 shadow-md hover:border-foreground/25 transition-all cursor-pointer"
           >
-            <Mic className="size-4" />
-          </button>
-        </div>
+            <Plus className="size-4 text-muted-foreground shrink-0 cursor-pointer hover:text-foreground" />
+            <input
+              type="text"
+              readOnly
+              placeholder="Where shall we start?"
+              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none font-medium cursor-pointer"
+            />
+            <button
+              type="button"
+              className="size-7 rounded-lg text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer hover:bg-muted"
+              title="Voice prompt"
+            >
+              <Mic className="size-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right Zoom Controls */}

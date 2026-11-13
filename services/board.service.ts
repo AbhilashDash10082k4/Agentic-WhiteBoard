@@ -53,8 +53,10 @@ export class BoardService {
     return this.repository.findBoardById(boardId);
   }
 
-  // Retrieve all boards for an authenticated user
-  async getUserBoards(email: string): Promise<Board[]> {
+  // Retrieve all boards for an authenticated user, latest edited first
+  async getUserBoards(
+    email: string
+  ): Promise<(Board & { updatedAt?: Date | null })[]> {
     if (!email) return [];
     return this.repository.findBoardsByUserEmail(email);
   }

@@ -59,7 +59,7 @@ export function WorkspaceView({ boardId }: WorkspaceViewProps) {
 
         {/* View Switcher: Excalidraw Whiteboard or Document */}
         {activeTab === "whiteboard" ? (
-          <Whiteboard boardId={boardId} />
+          <Whiteboard boardId={boardId} isSidebarOpen={isSidebarOpen} />
         ) : (
           <Document boardId={boardId} />
         )}

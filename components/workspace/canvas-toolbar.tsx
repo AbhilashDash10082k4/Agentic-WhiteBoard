@@ -23,12 +23,14 @@ import { cn } from "@/lib/utils";
 interface CanvasToolbarProps {
   excalidrawAPI?: any;
   activeTool?: string;
+  isSidebarOpen?: boolean;
   onSelectTool?: (tool: string) => void;
 }
 
 export function CanvasToolbar({
   excalidrawAPI,
   activeTool = "selection",
+  isSidebarOpen = false,
   onSelectTool,
 }: CanvasToolbarProps) {
   // Excalidraw tool definitions with custom vibrant colors
@@ -202,7 +204,12 @@ export function CanvasToolbar({
   };
 
   return (
-    <aside className="fixed left-3 top-20 z-20 flex flex-col items-center gap-1 rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_14px_40px_rgba(0,0,0,0.5)] transition-shadow duration-200 hover:shadow-[0_16px_44px_rgba(0,0,0,0.16)] pointer-events-auto">
+    <aside
+      className={cn(
+        "fixed top-20 z-30 flex flex-col items-center gap-1 rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_14px_40px_rgba(0,0,0,0.5)] transition-all duration-200 hover:shadow-[0_16px_44px_rgba(0,0,0,0.16)] pointer-events-auto",
+        isSidebarOpen ? "left-[16.5rem]" : "left-3"
+      )}
+    >
       {/* AI Assistant Highlight Button */}
       <Button
         size="icon-sm"

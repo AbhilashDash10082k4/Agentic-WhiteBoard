@@ -7,11 +7,14 @@ import { Loader2, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "@/hooks/use-toast";
 import { CanvasToolbar } from "@/components/workspace/canvas-toolbar";
+import { CanvasBottomBar } from "@/components/workspace/canvas-bottom-bar";
 import { FloatingToolBar } from "@/components/workspace/FloatingToolBar";
+import { AIChatPopover } from "@/components/workspace/ai-chat/ai-chat-popover";
+import { AIChatSidebar } from "@/components/workspace/ai-chat/ai-chat-sidebar";
+import { ChatMessage } from "@/components/workspace/ai-chat/ai-chat-types";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 
-// Dynamic import with ssr: false to prevent Next.js SSR canvas errors
 const Excalidraw = dynamic(
   async () => (await import("@excalidraw/excalidraw")).Excalidraw,
   {
@@ -24,18 +27,10 @@ const Excalidraw = dynamic(
   }
 );
 
-// Static immutable UI options to avoid re-render loops
 const UI_OPTIONS = {
-  canvasActions: {
-    loadScene: false,
-    export: {
-      saveFileToDisk: true,
-    },
-    saveAsImage: true,
-  },
+  canvasActions: { loadScene: false, export: { saveFileToDisk: true }, saveAsImage: true },
 };
 
-// Fast deterministic element & scene signature for dirty checking
 function getCanvasSignature(elements: readonly any[], appState: any): string {
   const elTokens = (elements || [])
     .filter((e) => !e.isDeleted)
@@ -46,9 +41,10 @@ function getCanvasSignature(elements: readonly any[], appState: any): string {
 
 interface WhiteboardProps {
   boardId: string;
+  isSidebarOpen?: boolean;
 }
 
-export function Whiteboard({ boardId }: WhiteboardProps) {
+export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) {
   const [mounted, setMounted] = React.useState(false);
   const [initialData, setInitialData] = React.useState<any>(null);
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "saving" | "saved">("idle");
@@ -56,47 +52,83 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [apiReady, setApiReady] = React.useState<any>(null);
   const [selectedElement, setSelectedElement] = React.useState<any>(null);
   const [floatingPos, setFloatingPos] = React.useState<{ x: number; y: number } | null>(null);
+  const [zoom, setZoom] = React.useState<number>(100);
+  const [chatMode, setChatMode] = React.useState<"closed" | "popover" | "sidebar">("closed");
+  const [activeSidekick, setActiveSidekick] = React.useState<string>("general");
+  const [messages, setMessages] = React.useState<ChatMessage[]>([
+    {
+      id: "init-1",
+      role: "assistant",
+      content:
+        "Key design principles applied:\n\n• Horizontal scalability via stateless services and read replicas\n• Defense in depth with WAF, gateway auth, and rate limiting at perimeter\n• Polyglot persistence matching data access patterns\n• Event-driven decoupling via Kafka\n• Full observability with RED method (Rate, Errors, Duration)\n\nContent placed left of existing board. Would you like to drill deeper, add a sequence diagram, or create an RFC?",
+      timestamp: new Date(),
+    },
+  ]);
 
   const { resolvedTheme } = useTheme();
   const excalidrawAPIRef = React.useRef<any>(null);
   const saveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const currentVersionRef = React.useRef<number>(1);
   const lastSavedSigRef = React.useRef<string>("");
-  const latestDataRef = React.useRef<{
-    elements: readonly any[];
-    appState: any;
-    files: any;
-  } | null>(null);
+  const latestDataRef = React.useRef<any>(null);
   const isInitialLoadRef = React.useRef(true);
 
-  // Memoized API callback to prevent Excalidraw render cycle
   const handleExcalidrawAPI = React.useCallback((api: any) => {
     excalidrawAPIRef.current = api;
     setApiReady((prev: any) => (prev === api ? prev : api));
   }, []);
 
-  // Sync dark mode changes to Excalidraw canvas only when different
   React.useEffect(() => {
     if (excalidrawAPIRef.current && resolvedTheme) {
-      const targetTheme = resolvedTheme === "dark" ? "dark" : "light";
-      const currentTheme = excalidrawAPIRef.current.getAppState()?.theme;
-      if (currentTheme !== targetTheme) {
-        excalidrawAPIRef.current.updateScene({
-          appState: { theme: targetTheme },
-        });
+      const target = resolvedTheme === "dark" ? "dark" : "light";
+      if (excalidrawAPIRef.current.getAppState()?.theme !== target) {
+        excalidrawAPIRef.current.updateScene({ appState: { theme: target } });
       }
     }
   }, [resolvedTheme]);
 
-  // Save canvas state to DB via API endpoint with signature sync & OCC
+  const handleZoomIn = React.useCallback(() => {
+    if (!excalidrawAPIRef.current) return;
+    const cur = excalidrawAPIRef.current.getAppState()?.zoom?.value ?? 1;
+    excalidrawAPIRef.current.updateScene({ appState: { zoom: { value: Math.min(3, cur + 0.1) } } });
+  }, []);
+
+  const handleZoomOut = React.useCallback(() => {
+    if (!excalidrawAPIRef.current) return;
+    const cur = excalidrawAPIRef.current.getAppState()?.zoom?.value ?? 1;
+    excalidrawAPIRef.current.updateScene({ appState: { zoom: { value: Math.max(0.1, cur - 0.1) } } });
+  }, []);
+
+  const handleResetZoom = React.useCallback(() => {
+    if (!excalidrawAPIRef.current) return;
+    excalidrawAPIRef.current.updateScene({ appState: { zoom: { value: 1 } } });
+  }, []);
+
+  const handleSendMessage = React.useCallback((text: string) => {
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setChatMode("sidebar");
+
+    // Automated smart assistant response
+    setTimeout(() => {
+      const reply: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `I've prepared the recommendations for "${text}".\n\n• Architecture models updated on canvas.\n• Microservice boundaries established.\n• You can review the updated components on the left.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, reply]);
+    }, 700);
+  }, []);
+
   const saveCanvasChanges = React.useCallback(async () => {
     if (!latestDataRef.current || !boardId) return;
-
-    const currentSig = getCanvasSignature(
-      latestDataRef.current.elements,
-      latestDataRef.current.appState
-    );
-
+    const currentSig = getCanvasSignature(latestDataRef.current.elements, latestDataRef.current.appState);
     if (currentSig === lastSavedSigRef.current) return;
 
     setSaveStatus("saving");
@@ -110,83 +142,55 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       });
 
       if (res.data?.success && res.data?.data) {
-        currentVersionRef.current = res.data.data.version ?? (currentVersionRef.current + 1);
+        currentVersionRef.current = res.data.data.version ?? currentVersionRef.current + 1;
         lastSavedSigRef.current = currentSig;
         setSaveStatus("saved");
-
-        toast({
-          title: "Canvas saved",
-          description: `Board synced (v${currentVersionRef.current}).`,
-          variant: "success",
-        });
-
+        toast({ title: "Canvas saved", description: `Board synced (v${currentVersionRef.current}).`, variant: "success" });
         setTimeout(() => setSaveStatus("idle"), 2500);
       }
     } catch (error: any) {
       setSaveStatus("idle");
-      if (error?.response?.status === 409) {
-        toast({
-          title: "Sync Conflict",
-          description: "Newer version exists on server. Refresh to sync.",
-          variant: "destructive",
-        });
-        return;
-      }
       toast({
-        title: "Save failed",
-        description: "Could not auto-save canvas changes.",
+        title: error?.response?.status === 409 ? "Sync Conflict" : "Save failed",
+        description: error?.response?.status === 409 ? "Newer version on server." : "Could not auto-save canvas changes.",
         variant: "destructive",
       });
     }
   }, [boardId]);
 
-  // Stable change handler: uses functional equality updaters to prevent re-render loops
   const handleCanvasChange = React.useCallback(
     (elements: readonly any[], appState: any, files: any) => {
       if (appState?.activeTool?.type) {
-        setActiveTool((prev) =>
-          prev === appState.activeTool.type ? prev : appState.activeTool.type
-        );
+        setActiveTool((prev) => (prev === appState.activeTool.type ? prev : appState.activeTool.type));
+      }
+      if (appState?.zoom?.value) {
+        const cz = Math.round(appState.zoom.value * 100);
+        setZoom((prev) => (prev === cz ? prev : cz));
       }
 
-      // Check single element selection for floating toolbar
-      const selectedIds = Object.keys(appState?.selectedElementIds || {}).filter(
-        (id) => appState.selectedElementIds[id]
-      );
-
+      const selectedIds = Object.keys(appState?.selectedElementIds || {}).filter((id) => appState.selectedElementIds[id]);
       if (selectedIds.length === 1) {
         const el = elements.find((item: any) => item.id === selectedIds[0] && !item.isDeleted);
         if (el) {
-          const zoom = appState.zoom?.value ?? 1;
-          const screenX = (el.x + (appState.scrollX ?? 0)) * zoom;
-          const screenY = (el.y + (appState.scrollY ?? 0)) * zoom;
-          const targetX = Math.round(Math.max(16, screenX));
-          const targetY = Math.round(Math.max(70, screenY - 54));
-
-          setSelectedElement((prev: any) =>
-            prev?.id === el.id && prev?.version === el.version && prev?.versionNonce === el.versionNonce
-              ? prev
-              : el
-          );
-
-          setFloatingPos((prev) =>
-            prev && prev.x === targetX && prev.y === targetY
-              ? prev
-              : { x: targetX, y: targetY }
-          );
+          const z = appState.zoom?.value ?? 1;
+          const sx = (el.x + (appState.scrollX ?? 0)) * z;
+          const sy = (el.y + (appState.scrollY ?? 0)) * z;
+          const tx = Math.round(Math.max(16, sx));
+          const ty = Math.round(Math.max(70, sy - 54));
+          setSelectedElement((prev: any) => (prev?.id === el.id && prev?.version === el.version ? prev : el));
+          setFloatingPos((prev) => (prev && prev.x === tx && prev.y === ty ? prev : { x: tx, y: ty }));
         } else {
-          setSelectedElement((prev: any) => (prev === null ? null : null));
-          setFloatingPos((prev) => (prev === null ? null : null));
+          setSelectedElement(null);
+          setFloatingPos(null);
         }
       } else {
-        setSelectedElement((prev: any) => (prev === null ? null : null));
-        setFloatingPos((prev) => (prev === null ? null : null));
+        setSelectedElement(null);
+        setFloatingPos(null);
       }
 
       if (isInitialLoadRef.current) return;
       latestDataRef.current = { elements, appState, files };
 
-      // Debounce save 10 seconds only when canvas state modified
       const currentSig = getCanvasSignature(elements, appState);
       if (currentSig !== lastSavedSigRef.current) {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -199,54 +203,32 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     [saveCanvasChanges]
   );
 
-  // Load existing canvas data on board mount
   React.useEffect(() => {
     let isMounted = true;
-
     async function loadBoardData() {
       try {
         const res = await axios.get(`/api/board/data?boardId=${boardId}`);
         if (res.data?.success && res.data?.data && isMounted) {
           const { elements, appState, files, version } = res.data.data;
           if (version) currentVersionRef.current = version;
-
           if (elements || appState) {
-            setInitialData({
-              elements: elements || [],
-              appState: appState || {},
-            });
-
+            setInitialData({ elements: elements || [], appState: appState || {} });
             lastSavedSigRef.current = getCanvasSignature(elements || [], appState || {});
-
             if (excalidrawAPIRef.current) {
-              excalidrawAPIRef.current.updateScene({
-                elements: elements || [],
-                appState: appState || {},
-              });
-              if (files && excalidrawAPIRef.current.addFiles) {
-                excalidrawAPIRef.current.addFiles(Object.values(files));
-              }
+              excalidrawAPIRef.current.updateScene({ elements: elements || [], appState: appState || {} });
+              if (files && excalidrawAPIRef.current.addFiles) excalidrawAPIRef.current.addFiles(Object.values(files));
             }
           }
         }
-      } catch {
-        // First-time board defaults to empty state
-      } finally {
+      } catch {} finally {
         if (isMounted) {
           setMounted(true);
-          setTimeout(() => {
-            isInitialLoadRef.current = false;
-          }, 1000);
+          setTimeout(() => { isInitialLoadRef.current = false; }, 1000);
         }
       }
     }
-
     if (boardId) loadBoardData();
-
-    return () => {
-      isMounted = false;
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
+    return () => { isMounted = false; if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [boardId]);
 
   if (!mounted) {
@@ -258,35 +240,52 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   }
 
   return (
-    <div className="relative size-full pt-14 bg-background">
-      {/* Custom Left Floating Toolset */}
-      <CanvasToolbar
-        excalidrawAPI={apiReady}
-        activeTool={activeTool}
-        onSelectTool={setActiveTool}
+    <div className="relative size-full pt-14 bg-background overflow-hidden">
+      <CanvasToolbar excalidrawAPI={apiReady} activeTool={activeTool} isSidebarOpen={isSidebarOpen} onSelectTool={setActiveTool} />
+      <FloatingToolBar selectedElement={selectedElement} position={floatingPos} excalidrawAPI={apiReady} onClose={() => { setSelectedElement(null); setFloatingPos(null); }} />
+
+      {/* Floating AI Chat Popover (Pic 1, 2, 5) */}
+      <AIChatPopover
+        isOpen={chatMode === "popover"}
+        activeSidekick={activeSidekick}
+        onSelectSidekick={setActiveSidekick}
+        onOpenSidePanel={() => setChatMode("sidebar")}
+        onClose={() => setChatMode("closed")}
+        onSendMessage={handleSendMessage}
       />
 
-      {/* Floating Element Properties Toolset */}
-      <FloatingToolBar
-        selectedElement={selectedElement}
-        position={floatingPos}
-        excalidrawAPI={apiReady}
-        onClose={() => {
-          setSelectedElement(null);
-          setFloatingPos(null);
-        }}
+      {/* Docked AI Side Panel (Pic 3, 4) */}
+      <AIChatSidebar
+        isOpen={chatMode === "sidebar"}
+        messages={messages}
+        activeSidekick={activeSidekick}
+        onSelectSidekick={setActiveSidekick}
+        onRestorePopover={() => setChatMode("popover")}
+        onClose={() => setChatMode("closed")}
+        onSendMessage={handleSendMessage}
       />
 
-      {/* Auto-save status indicator */}
-      <div className="absolute right-4 bottom-4 z-20 pointer-events-none">
+      {/* Miro-style Bottom Bar & Zoom Controls */}
+      <CanvasBottomBar
+        zoom={zoom}
+        isSidebarOpen={isSidebarOpen}
+        isChatOpen={chatMode === "popover"}
+        onOpenChat={() => setChatMode("popover")}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+      />
+
+      {/* Auto-save status badge */}
+      <div className="absolute right-4 bottom-16 z-20 pointer-events-none">
         {saveStatus === "saving" && (
-          <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-xs backdrop-blur-md animate-in fade-in">
+          <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-xs backdrop-blur-md">
             <Loader2 className="size-3 animate-spin text-amber-500" />
             <span>Saving canvas...</span>
           </div>
         )}
         {saveStatus === "saved" && (
-          <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-xs backdrop-blur-md animate-in fade-in">
+          <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-xs backdrop-blur-md">
             <Check className="size-3 text-emerald-500" />
             <span>All changes saved</span>
           </div>
