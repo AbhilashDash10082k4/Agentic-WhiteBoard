@@ -134,14 +134,16 @@ export class BoardController {
         { status: 200 },
       );
     } catch (error: unknown) {
+      console.error("BoardController.handleSaveBoardData error:", error);
       if (error instanceof Error && error.message === "OCC_CONFLICT_DETECTED") {
         return NextResponse.json(
           {
             success: false,
             conflict: true,
-            message: "Concurrent edit conflict: newer version exists on server.",
+            message:
+              "Concurrent edit conflict: newer version exists on server.",
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
 
