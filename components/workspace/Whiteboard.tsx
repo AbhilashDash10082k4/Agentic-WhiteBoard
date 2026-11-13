@@ -11,7 +11,7 @@ import { FloatingToolBar } from "@/components/workspace/FloatingToolBar";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 
-// Dynamic import with ssr: false to prevent Next.js SSR window/canvas errors
+// Dynamic import with ssr: false to prevent Next.js SSR canvas errors
 const Excalidraw = dynamic(
   async () => (await import("@excalidraw/excalidraw")).Excalidraw,
   {
@@ -24,36 +24,24 @@ const Excalidraw = dynamic(
   }
 );
 
-// Deterministic SHA-256 canvas state hash for dirty checking
-async function computeCanvasHash(
-  elements: readonly any[],
-  appState: any,
-  files: any
-): Promise<string> {
-  const normalized = {
-    elements: (elements || []).map((el) => ({
-      id: el.id,
-      v: el.version,
-      vn: el.versionNonce,
-      d: el.isDeleted,
-      x: el.x,
-      y: el.y,
-      w: el.width,
-      h: el.height,
-    })),
-    appState: {
-      bg: appState?.viewBackgroundColor,
-      grid: appState?.gridSize,
-      theme: appState?.theme,
+// Static immutable UI options to avoid re-render loops
+const UI_OPTIONS = {
+  canvasActions: {
+    loadScene: false,
+    export: {
+      saveFileToDisk: true,
     },
-    filesCount: files ? Object.keys(files).length : 0,
-  };
+    saveAsImage: true,
+  },
+};
 
-  const buffer = new TextEncoder().encode(JSON.stringify(normalized));
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+// Fast deterministic element & scene signature for dirty checking
+function getCanvasSignature(elements: readonly any[], appState: any): string {
+  const elTokens = (elements || [])
+    .filter((e) => !e.isDeleted)
+    .map((e) => `${e.id}:${e.version}:${e.x}:${e.y}:${e.width}:${e.height}:${e.strokeColor}:${e.backgroundColor}`)
+    .join(";");
+  return `${elTokens}|bg:${appState?.viewBackgroundColor || ""}`;
 }
 
 interface WhiteboardProps {
@@ -73,7 +61,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const excalidrawAPIRef = React.useRef<any>(null);
   const saveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const currentVersionRef = React.useRef<number>(1);
-  const lastSavedHashRef = React.useRef<string>("");
+  const lastSavedSigRef = React.useRef<string>("");
   const latestDataRef = React.useRef<{
     elements: readonly any[];
     appState: any;
@@ -81,28 +69,35 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   } | null>(null);
   const isInitialLoadRef = React.useRef(true);
 
-  // Sync dark mode changes to Excalidraw canvas via Imperative API
+  // Memoized API callback to prevent Excalidraw render cycle
+  const handleExcalidrawAPI = React.useCallback((api: any) => {
+    excalidrawAPIRef.current = api;
+    setApiReady((prev: any) => (prev === api ? prev : api));
+  }, []);
+
+  // Sync dark mode changes to Excalidraw canvas only when different
   React.useEffect(() => {
     if (excalidrawAPIRef.current && resolvedTheme) {
-      excalidrawAPIRef.current.updateScene({
-        appState: {
-          theme: resolvedTheme === "dark" ? "dark" : "light",
-        },
-      });
+      const targetTheme = resolvedTheme === "dark" ? "dark" : "light";
+      const currentTheme = excalidrawAPIRef.current.getAppState()?.theme;
+      if (currentTheme !== targetTheme) {
+        excalidrawAPIRef.current.updateScene({
+          appState: { theme: targetTheme },
+        });
+      }
     }
-  }, [resolvedTheme, apiReady]);
+  }, [resolvedTheme]);
 
-  // Save canvas state to DB via API endpoint with hashing & OCC
-  const saveCanvasChanges = async () => {
+  // Save canvas state to DB via API endpoint with signature sync & OCC
+  const saveCanvasChanges = React.useCallback(async () => {
     if (!latestDataRef.current || !boardId) return;
 
-    const currentHash = await computeCanvasHash(
+    const currentSig = getCanvasSignature(
       latestDataRef.current.elements,
-      latestDataRef.current.appState,
-      latestDataRef.current.files
+      latestDataRef.current.appState
     );
 
-    if (currentHash === lastSavedHashRef.current) return;
+    if (currentSig === lastSavedSigRef.current) return;
 
     setSaveStatus("saving");
     try {
@@ -116,7 +111,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
       if (res.data?.success && res.data?.data) {
         currentVersionRef.current = res.data.data.version ?? (currentVersionRef.current + 1);
-        lastSavedHashRef.current = currentHash;
+        lastSavedSigRef.current = currentSig;
         setSaveStatus("saved");
 
         toast({
@@ -143,54 +138,66 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         variant: "destructive",
       });
     }
-  };
+  }, [boardId]);
 
-  // Excalidraw change handler: syncs active tool, selected element position, and debounces save
-  const handleCanvasChange = (
-    elements: readonly any[],
-    appState: any,
-    files: any
-  ) => {
-    if (appState?.activeTool?.type && appState.activeTool.type !== activeTool) {
-      setActiveTool(appState.activeTool.type);
-    }
-
-    // Calculate position for floating element properties toolbar
-    const selectedIds = Object.keys(appState?.selectedElementIds || {}).filter(
-      (id) => appState.selectedElementIds[id]
-    );
-
-    if (selectedIds.length === 1) {
-      const el = elements.find((item: any) => item.id === selectedIds[0] && !item.isDeleted);
-      if (el) {
-        setSelectedElement(el);
-        const zoom = appState.zoom?.value ?? 1;
-        const screenX = (el.x + (appState.scrollX ?? 0)) * zoom;
-        const screenY = (el.y + (appState.scrollY ?? 0)) * zoom;
-
-        setFloatingPos({
-          x: Math.max(16, screenX),
-          y: Math.max(70, screenY - 54),
-        });
-      } else {
-        setSelectedElement(null);
-        setFloatingPos(null);
+  // Stable change handler: uses functional equality updaters to prevent re-render loops
+  const handleCanvasChange = React.useCallback(
+    (elements: readonly any[], appState: any, files: any) => {
+      if (appState?.activeTool?.type) {
+        setActiveTool((prev) =>
+          prev === appState.activeTool.type ? prev : appState.activeTool.type
+        );
       }
-    } else {
-      setSelectedElement(null);
-      setFloatingPos(null);
-    }
 
-    if (isInitialLoadRef.current) return;
-    latestDataRef.current = { elements, appState, files };
+      // Check single element selection for floating toolbar
+      const selectedIds = Object.keys(appState?.selectedElementIds || {}).filter(
+        (id) => appState.selectedElementIds[id]
+      );
 
-    if (!saveTimerRef.current) {
-      saveTimerRef.current = setTimeout(() => {
-        saveTimerRef.current = null;
-        saveCanvasChanges();
-      }, 10000);
-    }
-  };
+      if (selectedIds.length === 1) {
+        const el = elements.find((item: any) => item.id === selectedIds[0] && !item.isDeleted);
+        if (el) {
+          const zoom = appState.zoom?.value ?? 1;
+          const screenX = (el.x + (appState.scrollX ?? 0)) * zoom;
+          const screenY = (el.y + (appState.scrollY ?? 0)) * zoom;
+          const targetX = Math.round(Math.max(16, screenX));
+          const targetY = Math.round(Math.max(70, screenY - 54));
+
+          setSelectedElement((prev: any) =>
+            prev?.id === el.id && prev?.version === el.version && prev?.versionNonce === el.versionNonce
+              ? prev
+              : el
+          );
+
+          setFloatingPos((prev) =>
+            prev && prev.x === targetX && prev.y === targetY
+              ? prev
+              : { x: targetX, y: targetY }
+          );
+        } else {
+          setSelectedElement((prev: any) => (prev === null ? null : null));
+          setFloatingPos((prev) => (prev === null ? null : null));
+        }
+      } else {
+        setSelectedElement((prev: any) => (prev === null ? null : null));
+        setFloatingPos((prev) => (prev === null ? null : null));
+      }
+
+      if (isInitialLoadRef.current) return;
+      latestDataRef.current = { elements, appState, files };
+
+      // Debounce save 10 seconds only when canvas state modified
+      const currentSig = getCanvasSignature(elements, appState);
+      if (currentSig !== lastSavedSigRef.current) {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          saveTimerRef.current = null;
+          saveCanvasChanges();
+        }, 10000);
+      }
+    },
+    [saveCanvasChanges]
+  );
 
   // Load existing canvas data on board mount
   React.useEffect(() => {
@@ -209,8 +216,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
               appState: appState || {},
             });
 
-            const initialHash = await computeCanvasHash(elements, appState, files);
-            lastSavedHashRef.current = initialHash;
+            lastSavedSigRef.current = getCanvasSignature(elements || [], appState || {});
 
             if (excalidrawAPIRef.current) {
               excalidrawAPIRef.current.updateScene({
@@ -224,13 +230,13 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           }
         }
       } catch {
-        // First time opening board defaults to blank canvas
+        // First-time board defaults to empty state
       } finally {
         if (isMounted) {
           setMounted(true);
           setTimeout(() => {
             isInitialLoadRef.current = false;
-          }, 1200);
+          }, 1000);
         }
       }
     }
@@ -253,14 +259,14 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
   return (
     <div className="relative size-full pt-14 bg-background">
-      {/* Custom Floating Left Toolset */}
+      {/* Custom Left Floating Toolset */}
       <CanvasToolbar
         excalidrawAPI={apiReady}
         activeTool={activeTool}
         onSelectTool={setActiveTool}
       />
 
-      {/* Dynamic Floating Element Properties Toolset */}
+      {/* Floating Element Properties Toolset */}
       <FloatingToolBar
         selectedElement={selectedElement}
         position={floatingPos}
@@ -288,21 +294,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       </div>
 
       <Excalidraw
+        theme={resolvedTheme === "dark" ? "dark" : "light"}
         initialData={initialData}
         onChange={handleCanvasChange}
-        excalidrawAPI={(api: any) => {
-          excalidrawAPIRef.current = api;
-          setApiReady(api);
-        }}
-        UIOptions={{
-          canvasActions: {
-            loadScene: false,
-            export: {
-              saveFileToDisk: true,
-            },
-            saveAsImage: true,
-          },
-        }}
+        excalidrawAPI={handleExcalidrawAPI}
+        UIOptions={UI_OPTIONS}
       />
     </div>
   );
