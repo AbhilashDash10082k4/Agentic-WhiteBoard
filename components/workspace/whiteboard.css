@@ -13,3 +13,30 @@
   display: none !important;
 }
 
+/* Remove default Excalidraw library button */
+.excalidraw .layer-ui__library,
+.excalidraw .sidebar-trigger,
+.excalidraw .default-sidebar-trigger,
+.excalidraw .library-menu-browse-button,
+.excalidraw button[title*="Library"],
+.excalidraw button[aria-label*="Library"],
+.excalidraw [data-testid="sidebar-trigger"] {
+  display: none !important;
+}
+
+/* Unified canvas background matching application theme */
+.excalidraw,
+.excalidraw .excalidraw-container {
+  background-color: var(--background) !important;
+}
+
+.dark .excalidraw,
+.dark .excalidraw .excalidraw-container,
+.dark .excalidraw.theme--dark {
+  --color-surface-lowest: var(--background) !important;
+  background-color: var(--background) !important;
+}
+
+.dark .excalidraw canvas {
+  background-color: transparent !important;
+}

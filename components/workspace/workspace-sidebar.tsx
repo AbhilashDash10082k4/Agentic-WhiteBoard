@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { Home, Star, FolderOpen, Search, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
 
 interface WorkspaceSidebarProps {
   isOpen: boolean;
@@ -12,9 +11,6 @@ interface WorkspaceSidebarProps {
 }
 
 export function WorkspaceSidebar({ isOpen, onClose }: WorkspaceSidebarProps) {
-  const { user } = useUser();
-  const userName = user?.firstName || user?.fullName || "User";
-
   if (!isOpen) return null;
 
   return (
@@ -27,10 +23,10 @@ export function WorkspaceSidebar({ isOpen, onClose }: WorkspaceSidebarProps) {
       />
 
       {/* Floating or docked sidebar panel matching Miro */}
-      <aside className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col justify-between border-r border-border bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-200 ease-in-out">
+      <aside className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col justify-between border-r border-border bg-background text-foreground shadow-xl transition-all duration-200 ease-in-out">
         {/* Top Header & Navigation */}
         <div className="flex flex-col p-4 gap-5">
-          {/* Brand & Action */}
+          {/* Brand & Action Controls */}
           <div className="flex items-center justify-between">
             <Link
               href="/dashboard"
@@ -43,15 +39,16 @@ export function WorkspaceSidebar({ isOpen, onClose }: WorkspaceSidebarProps) {
               <Button
                 variant="outline"
                 size="icon-xs"
-                className="size-7 rounded-md border-border bg-background hover:bg-muted"
+                className="size-7 rounded-md border-border bg-background hover:bg-muted cursor-pointer"
                 title="Create workspace"
               >
                 <Plus className="size-3.5 text-muted-foreground" />
               </Button>
+              {/* Always visible close button */}
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="size-7 text-muted-foreground hover:text-foreground md:hidden"
+                className="size-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
                 onClick={onClose}
                 title="Close sidebar"
               >
@@ -101,37 +98,6 @@ export function WorkspaceSidebar({ isOpen, onClose }: WorkspaceSidebarProps) {
               Create a Space to group Boards or Docs together in a shared place
               for your team or project.
             </p>
-          </div>
-        </div>
-
-        {/* Bottom Team / Account Switcher */}
-        <div className="flex flex-col gap-2 border-t border-border/60 p-4">
-          <div className="flex items-center gap-2.5 cursor-pointer rounded-lg p-1 hover:bg-muted transition-colors">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white shadow-xs">
-              {userName.charAt(0).toUpperCase()}
-            </div>
-            <span className="truncate text-xs font-medium text-foreground">
-              {userName}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between gap-2 cursor-pointer rounded-lg p-1 hover:bg-muted transition-colors">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-400 text-xs font-bold text-neutral-900 shadow-xs">
-                AT
-              </div>
-              <span className="truncate text-xs font-medium text-foreground">
-                {userName} Team
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="icon-xs"
-              className="size-6 rounded-md border-border bg-background hover:bg-muted shrink-0"
-              title="Add team"
-            >
-              <Plus className="size-3 text-muted-foreground" />
-            </Button>
           </div>
         </div>
       </aside>

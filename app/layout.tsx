@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Provider from "./provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -29,13 +30,20 @@ export default function RootLayout({
       enableSystem
       disableTransitionOnChange
     >
-      <Provider>{children}</Provider>
+      <Provider>
+        {children}
+        <Toaster />
+      </Provider>
     </ThemeProvider>
   );
 
   if (!isClerkConfigured) {
     return (
-      <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={cn("font-sans", geist.variable)}
+      >
         <body className="m-0 p-0 antialiased bg-background text-foreground">
           {content}
         </body>
@@ -45,7 +53,11 @@ export default function RootLayout({
 
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={cn("font-sans", geist.variable)}
+      >
         <body className="m-0 p-0 antialiased bg-background text-foreground">
           {content}
         </body>

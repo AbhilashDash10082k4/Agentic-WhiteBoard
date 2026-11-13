@@ -87,7 +87,11 @@ export function WorkspaceHeader({
   };
 
   return (
-    <header className="fixed top-2 left-2 right-2 z-30 flex items-center justify-between pointer-events-none">
+    <header
+      className={`fixed top-2 right-2 z-30 flex items-center justify-between pointer-events-none transition-all duration-200 ${
+        isSidebarOpen ? "left-[16.5rem]" : "left-2"
+      }`}
+    >
       {/* Left controls: Sidebar toggle, Agentic WhiteBoard brand, Board name pill */}
       <div className="flex items-center gap-2 pointer-events-auto">
         {/* Toggle Sidebar Button */}

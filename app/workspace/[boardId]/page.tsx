@@ -15,4 +15,3 @@ export default async function WorkspaceBoardPage({ params }: PageProps) {
 
   return <WorkspaceView boardId={boardId} />;
 }
-
