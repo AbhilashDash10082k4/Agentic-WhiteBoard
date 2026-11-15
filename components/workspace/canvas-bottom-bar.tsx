@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 interface CanvasBottomBarProps {
   zoom?: number;
   isSidebarOpen?: boolean;
+  isRightSidebarOpen?: boolean;
   isChatOpen?: boolean;
   onOpenChat?: () => void;
   onZoomIn?: () => void;
@@ -28,6 +29,7 @@ interface CanvasBottomBarProps {
 export function CanvasBottomBar({
   zoom = 100,
   isSidebarOpen = false,
+  isRightSidebarOpen = false,
   isChatOpen = false,
   onOpenChat,
   onZoomIn,
@@ -41,14 +43,18 @@ export function CanvasBottomBar({
     <footer
       className={cn(
         "fixed bottom-3 right-0 z-30 pointer-events-none flex items-end justify-between px-4 transition-all duration-200",
-        isSidebarOpen ? "left-64" : "left-0"
+        isSidebarOpen ? "left-64" : "left-0",
+        isRightSidebarOpen && "sm:right-[420px]"
       )}
     >
       {/* Spacer on left */}
       <div className="w-16 hidden md:block" />
 
       {/* Center AI prompt & suggested quick actions */}
-      <div className="flex flex-col items-center gap-2 pointer-events-auto max-w-lg w-full mx-auto">
+      <div
+        data-ai-bottom-bar="true"
+        className="flex flex-col items-center gap-2 pointer-events-auto max-w-lg w-full mx-auto"
+      >
         {/* Suggestion Pills */}
         {showPills && !isChatOpen && (
           <div className="flex flex-wrap items-center justify-center gap-1.5 transition-all animate-in fade-in slide-in-from-bottom-2">
