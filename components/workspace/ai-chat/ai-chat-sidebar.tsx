@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChatMessage, SOFTWARE_ARCHITECTURE_SIDEKICK } from "./ai-chat-types";
+import { ChatMessage } from "./ai-chat-types";
+import { AIChatOptionsPanel } from "./ai-chat-options-panel";
 
 interface AIChatSidebarProps {
   isOpen: boolean;
@@ -24,6 +25,14 @@ interface AIChatSidebarProps {
   onRestorePopover: () => void;
   onClose: () => void;
   onSendMessage: (text: string) => void;
+  onNewChat: () => void;
+  onGenerateDiagram: (params: {
+    diagramType: string;
+    prompt: string;
+    apiKey: string;
+    provider: "gemini" | "openai";
+  }) => void;
+  isGenerating?: boolean;
 }
 
 export function AIChatSidebar({
@@ -34,6 +43,9 @@ export function AIChatSidebar({
   onRestorePopover,
   onClose,
   onSendMessage,
+  onNewChat,
+  onGenerateDiagram,
+  isGenerating = false,
 }: AIChatSidebarProps) {
   const [inputText, setInputText] = React.useState("");
   const [showDropdown, setShowDropdown] = React.useState(false);
@@ -56,7 +68,10 @@ export function AIChatSidebar({
   };
 
   return (
-    <aside className="fixed top-0 right-0 z-40 h-screen w-full sm:w-[420px] flex flex-col border-l border-border bg-background text-foreground shadow-2xl transition-all duration-200 animate-in slide-in-from-right">
+    <aside
+      data-ai-chat-container="true"
+      className="fixed top-0 right-0 z-40 h-screen w-full sm:w-[420px] flex flex-col border-l border-border bg-background text-foreground shadow-2xl transition-all duration-200 animate-in slide-in-from-right"
+    >
       {/* Top Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/60 relative">
         <button
@@ -65,7 +80,7 @@ export function AIChatSidebar({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/70 bg-card hover:bg-muted text-xs font-semibold text-foreground shadow-2xs transition-colors cursor-pointer max-w-[220px]"
         >
           <span className="truncate">
-            {isArch ? "Software Architecture" : "Design a scalable..."}
+            {isArch ? "Software Architecture" : messages.length > 0 ? "Active chat" : "New chat"}
           </span>
           <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
         </button>
@@ -75,7 +90,7 @@ export function AIChatSidebar({
             <button
               type="button"
               onClick={() => {
-                onSelectSidekick("general");
+                onNewChat();
                 setShowDropdown(false);
               }}
               className="flex items-center gap-2 w-full px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-muted text-foreground transition-colors cursor-pointer"
@@ -106,12 +121,12 @@ export function AIChatSidebar({
           </div>
         )}
 
-        {/* Right Action Icons (Pic 4) */}
+        {/* Right Action Icons */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-xs"
-            onClick={() => onSendMessage("New chat initialized")}
+            onClick={onNewChat}
             className="size-7 rounded-lg text-muted-foreground hover:text-foreground"
             title="New chat"
           >
@@ -147,64 +162,82 @@ export function AIChatSidebar({
         </div>
       </div>
 
-      {/* Message Stream */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 text-xs leading-relaxed">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              "flex flex-col gap-1 rounded-2xl p-3.5",
-              msg.role === "user"
-                ? "bg-muted/70 ml-6 text-foreground"
-                : "bg-card border border-border/70 text-foreground shadow-2xs mr-2"
-            )}
-          >
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-              <span className="flex items-center gap-1.5">
-                {msg.role === "assistant" && (
-                  <Sparkles className="size-3 text-amber-500 fill-amber-500" />
-                )}
-                {msg.role === "user" ? "You" : isArch ? "Software Architecture" : "Agentic AI"}
-              </span>
-              <span>
-                {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </div>
-            <div className="whitespace-pre-wrap mt-1 leading-normal text-xs font-normal">
-              {msg.content}
+      {/* Main Body */}
+      {messages.length === 0 ? (
+        <div className="flex-1 overflow-y-auto p-4">
+          <AIChatOptionsPanel
+            activeSidekick={activeSidekick}
+            onSelectSidekick={onSelectSidekick}
+            onSendMessage={onSendMessage}
+            onGenerateDiagram={onGenerateDiagram}
+            isGenerating={isGenerating}
+          />
+        </div>
+      ) : (
+        <>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 text-xs leading-relaxed">
+            {messages.map((msg) => {
+              const isError = msg.content.includes("Error") || msg.content.includes("failed");
+              return (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "flex flex-col gap-1 rounded-2xl p-3.5",
+                    msg.role === "user"
+                      ? "bg-muted/70 ml-6 text-foreground"
+                      : isError
+                      ? "bg-destructive/10 border border-destructive/30 text-destructive shadow-2xs mr-2"
+                      : "bg-card border border-border/70 text-foreground shadow-2xs mr-2"
+                  )}
+                >
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      {msg.role === "assistant" && (
+                        <Sparkles className={cn("size-3", isError ? "text-destructive" : "text-amber-500 fill-amber-500")} />
+                      )}
+                      {msg.role === "user" ? "You" : isArch ? "Software Architecture" : "Agentic AI"}
+                    </span>
+                    <span>
+                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <div className="whitespace-pre-wrap mt-1 leading-normal text-xs font-normal">
+                    {msg.content}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Prompt Input for ongoing chat */}
+          <div className="p-3 border-t border-border/60 bg-background/90 backdrop-blur-md">
+            <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-background px-3 py-2 shadow-xs focus-within:ring-1 focus-within:ring-ring">
+              <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground hover:text-foreground shrink-0">
+                <Plus className="size-4" />
+              </Button>
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="What shall we do next?"
+                className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none font-medium"
+              />
+              <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground hover:text-foreground shrink-0">
+                <Mic className="size-3.5" />
+              </Button>
+              <Button
+                size="icon-xs"
+                onClick={handleSend}
+                disabled={!inputText.trim()}
+                className="size-6 rounded-lg bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 hover:opacity-90 disabled:opacity-40"
+              >
+                <ArrowUp className="size-3.5" />
+              </Button>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Bottom Prompt Input (Pic 4) */}
-      <div className="p-3 border-t border-border/60 bg-background/90 backdrop-blur-md">
-        <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-background px-3 py-2 shadow-xs focus-within:ring-1 focus-within:ring-ring">
-          <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground hover:text-foreground shrink-0">
-            <Plus className="size-4" />
-          </Button>
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="What shall we do next?"
-            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none font-medium"
-          />
-          <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground hover:text-foreground shrink-0">
-            <Mic className="size-3.5" />
-          </Button>
-          <Button
-            size="icon-xs"
-            onClick={handleSend}
-            disabled={!inputText.trim()}
-            className="size-6 rounded-lg bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 hover:opacity-90 disabled:opacity-40"
-          >
-            <ArrowUp className="size-3.5" />
-          </Button>
-        </div>
-      </div>
+        </>
+      )}
     </aside>
   );
 }
-
