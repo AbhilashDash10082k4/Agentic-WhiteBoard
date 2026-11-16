@@ -1,30 +1,16 @@
 "use client";
 
 import * as React from "react";
+import axios from "axios";
 import {
-  GraduationCap,
-  Network,
-  Presentation,
-  HardDrive,
-  MessageSquare,
-  PenTool,
-  GitBranch,
-  Monitor,
-  Smartphone,
-  Sparkles,
-  Wand2,
-  ArrowUp,
-  KeyRound,
-  Check,
+  GraduationCap, Network, Presentation, HardDrive, MessageSquare,
+  PenTool, GitBranch, Monitor, Smartphone, Sparkles, Wand2,
+  ArrowUp, KeyRound, Check, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  SOLVING_OPTIONS,
-  CREATION_OPTIONS,
-  SOFTWARE_ARCHITECTURE_SIDEKICK,
-  SolvingOption,
-  CreationOption,
+  SOLVING_OPTIONS, CREATION_OPTIONS, SOFTWARE_ARCHITECTURE_SIDEKICK,
 } from "./ai-chat-types";
 import { getSavedApiKey, getSavedProvider, saveApiKey } from "./ai-key-storage";
 
@@ -36,10 +22,21 @@ interface AIChatOptionsPanelProps {
     diagramType: string;
     prompt: string;
     apiKey: string;
-    provider: "gemini" | "openai";
+    provider: string;
   }) => void;
   isGenerating?: boolean;
 }
+
+const VAULT_PROVIDERS = [
+  { id: "google", label: "Google Gemini" },
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "groq", label: "Groq" },
+  { id: "mistral", label: "Mistral" },
+  { id: "deepseek", label: "DeepSeek" },
+  { id: "openrouter", label: "OpenRouter" },
+  { id: "custom", label: "Custom Endpoint" },
+];
 
 export function AIChatOptionsPanel({
   activeSidekick,
@@ -52,33 +49,41 @@ export function AIChatOptionsPanel({
   const [promptText, setPromptText] = React.useState("");
   const [showKeyConfig, setShowKeyConfig] = React.useState(false);
   const [apiKey, setApiKey] = React.useState("");
-  const [provider, setProvider] = React.useState<"gemini" | "openai">("gemini");
-  const [keySaved, setKeySaved] = React.useState(false);
+  const [provider, setProvider] = React.useState<string>("google");
+  const [label, setLabel] = React.useState("My API Key");
+  const [statusMsg, setStatusMsg] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setApiKey(getSavedApiKey());
-    setProvider(getSavedProvider());
+    const saved = getSavedProvider();
+    setProvider(saved === "gemini" ? "google" : saved);
   }, []);
 
   const isArch = activeSidekick === "software-architecture";
   const selectedOption = CREATION_OPTIONS.find((o) => o.id === selectedType) || CREATION_OPTIONS[0];
 
-  const handleSaveKey = () => {
-    saveApiKey(apiKey, provider);
-    setKeySaved(true);
-    setTimeout(() => {
-      setKeySaved(false);
-      setShowKeyConfig(false);
-    }, 1200);
+  const handleSaveVault = async () => {
+    if (!apiKey.trim()) return;
+    try {
+      await axios.post("/api/credentials", {
+        provider,
+        label: label.trim() || `${provider} Key`,
+        apiKey: apiKey.trim(),
+      });
+      saveApiKey(apiKey, provider as any);
+      setStatusMsg("Vault Saved!");
+      setTimeout(() => { setStatusMsg(null); setShowKeyConfig(false); }, 1500);
+    } catch {
+      saveApiKey(apiKey, provider as any);
+      setStatusMsg("Local Saved");
+      setTimeout(() => { setStatusMsg(null); setShowKeyConfig(false); }, 1500);
+    }
   };
 
   const handleGenerate = () => {
     if (!promptText.trim()) return;
     const keyToUse = apiKey || getSavedApiKey();
-    if (!keyToUse) {
-      setShowKeyConfig(true);
-      return;
-    }
+    if (!keyToUse) { setShowKeyConfig(true); return; }
     onGenerateDiagram({
       diagramType: selectedType,
       prompt: promptText.trim(),
@@ -109,9 +114,7 @@ export function AIChatOptionsPanel({
           S
         </div>
         <div>
-          <h3 className="font-serif text-lg font-semibold text-foreground tracking-tight">
-            Software Architecture
-          </h3>
+          <h3 className="font-serif text-lg font-semibold text-foreground tracking-tight">Software Architecture</h3>
           <p className="text-xs text-muted-foreground mt-0.5 max-w-xs leading-relaxed">
             {SOFTWARE_ARCHITECTURE_SIDEKICK.description}
           </p>
@@ -134,7 +137,7 @@ export function AIChatOptionsPanel({
 
   return (
     <div className="space-y-4">
-      {/* WHAT DO YOU WANT TO CREATE? (Pic 3) */}
+      {/* What do you want to create? */}
       <div>
         <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
           What do you want to create?
@@ -170,7 +173,7 @@ export function AIChatOptionsPanel({
         </div>
       </div>
 
-      {/* Describe your idea (Pic 3) */}
+      {/* Describe your idea */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <div>
@@ -180,7 +183,6 @@ export function AIChatOptionsPanel({
           <Wand2 className="size-4 text-purple-500 opacity-80" />
         </div>
 
-        {/* Textbox container */}
         <div className="rounded-2xl border border-border/80 bg-card p-2.5 shadow-xs focus-within:ring-1 focus-within:ring-purple-500/50">
           <textarea
             value={promptText}
@@ -191,12 +193,11 @@ export function AIChatOptionsPanel({
                 handleGenerate();
               }
             }}
-            placeholder="E.g. Create a customer onboarding flow with signup, email verification and subscription decision..."
+            placeholder="E.g. Create a customer onboarding flow with signup, email verification..."
             rows={3}
             className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none resize-none leading-relaxed"
           />
 
-          {/* Bottom Bar inside prompt box */}
           <div className="flex items-center justify-between pt-2 border-t border-border/40 mt-1">
             <span className="rounded-full border border-border/80 bg-muted/60 px-2.5 py-0.5 text-[11px] font-medium text-foreground">
               {selectedOption.title}
@@ -208,7 +209,7 @@ export function AIChatOptionsPanel({
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => setShowKeyConfig((v) => !v)}
-                title={apiKey ? "API Key configured" : "Configure API Key"}
+                title={apiKey ? "KMS Credential Vault active" : "Configure Provider Key"}
                 className={cn("size-6 rounded-lg", apiKey ? "text-emerald-500" : "text-amber-500")}
               >
                 <KeyRound className="size-3.5" />
@@ -228,50 +229,51 @@ export function AIChatOptionsPanel({
         </div>
       </div>
 
-      {/* Expandable API Key Setup */}
+      {/* KMS Credential Vault Config Box */}
       {showKeyConfig && (
         <div className="rounded-2xl border border-border bg-muted/30 p-3 space-y-2 text-xs">
           <div className="flex items-center justify-between font-semibold">
-            <span>API Key Setup</span>
+            <span className="flex items-center gap-1.5 text-foreground">
+              <ShieldCheck className="size-3.5 text-purple-600" />
+              KMS Credential Vault
+            </span>
             <select
               value={provider}
-              onChange={(e) => setProvider(e.target.value as any)}
+              onChange={(e) => setProvider(e.target.value)}
               className="bg-card border border-border rounded px-2 py-0.5 text-[11px] text-foreground"
             >
-              <option value="gemini">Google Gemini</option>
-              <option value="openai">OpenAI</option>
+              {VAULT_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
             </select>
           </div>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Credential label (e.g. Production Key)"
+            className="w-full rounded-lg border border-border/80 bg-background px-2.5 py-1 text-xs text-foreground outline-none"
+          />
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder={`Enter your ${provider === "gemini" ? "Gemini" : "OpenAI"} API Key`}
-            className="w-full rounded-lg border border-border/80 bg-background px-2.5 py-1.5 text-xs text-foreground outline-none"
+            placeholder={`Enter ${provider} API Key`}
+            className="w-full rounded-lg border border-border/80 bg-background px-2.5 py-1 text-xs text-foreground outline-none"
           />
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              size="xs"
-              variant="outline"
-              onClick={() => setShowKeyConfig(false)}
-            >
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" size="xs" variant="outline" onClick={() => setShowKeyConfig(false)}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              size="xs"
-              onClick={handleSaveKey}
-              className="bg-purple-600 text-white hover:bg-purple-700"
-            >
-              {keySaved ? <Check className="size-3 mr-1" /> : null}
-              {keySaved ? "Saved" : "Save Key"}
+            <Button type="button" size="xs" onClick={handleSaveVault} className="bg-purple-600 text-white hover:bg-purple-700">
+              {statusMsg ? <Check className="size-3 mr-1" /> : null}
+              {statusMsg || "Save to Vault"}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Solving Options (Learn Miro AI, Map a process, etc.) */}
+      {/* Solving Options */}
       <div className="pt-2 border-t border-border/40">
         <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           What are we solving today?
@@ -282,11 +284,8 @@ export function AIChatOptionsPanel({
               key={item.id}
               type="button"
               onClick={() => {
-                if (item.id === "map-process") {
-                  onSelectSidekick("software-architecture");
-                } else {
-                  onSendMessage(item.title);
-                }
+                if (item.id === "map-process") onSelectSidekick("software-architecture");
+                else onSendMessage(item.title);
               }}
               className="flex items-center gap-2.5 w-full p-1.5 rounded-xl hover:bg-muted/60 text-left transition-colors cursor-pointer"
             >
@@ -301,4 +300,3 @@ export function AIChatOptionsPanel({
     </div>
   );
 }
-

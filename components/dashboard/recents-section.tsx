@@ -130,7 +130,7 @@ export function RecentsSection() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border/60 text-muted-foreground font-medium">
-                <th className="pb-2.5 font-medium min-w-[200px]">Name</th>
+                <th className="pb-2.5 font-medium min-w-50">Name</th>
                 <th className="pb-2.5 font-medium hidden sm:table-cell">
                   Online users
                 </th>
@@ -144,7 +144,9 @@ export function RecentsSection() {
             </thead>
             <tbody className="divide-y divide-border/40">
               {boards.map((board) => {
-                const dateStr = formatBoardDate(board.updatedAt || board.createdAt);
+                const dateStr = formatBoardDate(
+                  board.updatedAt || board.createdAt,
+                );
 
                 return (
                   <tr
@@ -173,7 +175,7 @@ export function RecentsSection() {
                       Personal
                     </td>
                     <td className="py-3 text-muted-foreground">{dateStr}</td>
-                    <td className="py-3 text-foreground/80 font-medium truncate max-w-[140px]">
+                    <td className="py-3 text-foreground/80 font-medium truncate max-w-35">
                       {userName}
                     </td>
                     <td className="py-3 text-right">

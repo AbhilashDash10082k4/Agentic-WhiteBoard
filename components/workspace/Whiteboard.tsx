@@ -19,7 +19,7 @@ import {
   createAIGenerationPlaceholderElements,
   convertToElements,
 } from "@/components/workspace/ai-chat/ai-canvas-generator";
-import { useCanvasAutoSave } from "./use-canvas-autosave";
+import { useCanvasAutoSave } from "../../hooks/use-canvas-autosave";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 
@@ -32,7 +32,7 @@ const Excalidraw = dynamic(
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     ),
-  }
+  },
 );
 
 const UI_OPTIONS = {
@@ -48,16 +48,30 @@ interface WhiteboardProps {
   isSidebarOpen?: boolean;
 }
 
-export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) {
-  const { mounted, initialData, saveStatus, filesRef, excalidrawAPIRef, scheduleAutoSave } =
-    useCanvasAutoSave(boardId);
+export function Whiteboard({
+  boardId,
+  isSidebarOpen = false,
+}: WhiteboardProps) {
+  const {
+    mounted,
+    initialData,
+    saveStatus,
+    filesRef,
+    excalidrawAPIRef,
+    scheduleAutoSave,
+  } = useCanvasAutoSave(boardId);
 
   const [activeTool, setActiveTool] = React.useState<string>("selection");
   const [apiReady, setApiReady] = React.useState<any>(null);
   const [selectedElement, setSelectedElement] = React.useState<any>(null);
-  const [floatingPos, setFloatingPos] = React.useState<{ x: number; y: number } | null>(null);
+  const [floatingPos, setFloatingPos] = React.useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [zoom, setZoom] = React.useState<number>(100);
-  const [chatMode, setChatMode] = React.useState<"closed" | "popover" | "sidebar">("closed");
+  const [chatMode, setChatMode] = React.useState<
+    "closed" | "popover" | "sidebar"
+  >("closed");
   const [activeSidekick, setActiveSidekick] = React.useState<string>("general");
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -93,7 +107,7 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
         api.addFiles(Object.values(filesRef.current));
       }
     },
-    [excalidrawAPIRef, filesRef]
+    [excalidrawAPIRef, filesRef],
   );
 
   React.useEffect(() => {
@@ -157,14 +171,15 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
       if (!excalidrawAPIRef.current) return;
       setIsGenerating(true);
 
-      const existing = excalidrawAPIRef.current.getSceneElementsIncludingDeleted();
+      const existing =
+        excalidrawAPIRef.current.getSceneElementsIncludingDeleted();
       const pos = getRightmostPlacementPosition(existing, 80);
 
       const placeholderId = `ai-placeholder-${Date.now()}`;
       const placeholderElements = await createAIGenerationPlaceholderElements(
         pos.x,
         pos.y,
-        `Generating ${diagramType}`
+        `Generating ${diagramType}`,
       );
       appendElementsToCanvas(excalidrawAPIRef.current, placeholderElements);
 
@@ -185,25 +200,27 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
           position: pos,
         });
 
-        if (res.data?.success && res.data?.data?.elements) {
-          const converted = await convertToElements(res.data.data.elements);
+        const diagramPayload = res.data?.data;
+        if (res.data?.success && diagramPayload?.elements) {
+          const converted = await convertToElements(diagramPayload.elements);
           replacePlaceholderWithGeneratedElements(
             excalidrawAPIRef.current,
             placeholderId,
-            converted
+            converted,
           );
 
+          const generatedTitle = diagramPayload.title || diagramType;
           const assistantMsg: ChatMessage = {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: `Successfully generated ${res.data.data.title || diagramType} on canvas.`,
+            content: `Successfully generated ${generatedTitle} on canvas.`,
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
 
           toast({
             title: "Diagram Generated",
-            description: `Generated ${res.data.data.title || diagramType} on canvas.`,
+            description: `Generated ${generatedTitle} on canvas.`,
             variant: "success",
           });
         } else {
@@ -228,14 +245,14 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
         setIsGenerating(false);
       }
     },
-    [excalidrawAPIRef]
+    [excalidrawAPIRef],
   );
 
   const handleCanvasChange = React.useCallback(
     (elements: readonly any[], appState: any, files: any) => {
       if (appState?.activeTool?.type) {
         setActiveTool((prev) =>
-          prev === appState.activeTool.type ? prev : appState.activeTool.type
+          prev === appState.activeTool.type ? prev : appState.activeTool.type,
         );
       }
       if (appState?.zoom?.value) {
@@ -243,12 +260,12 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
         setZoom((prev) => (prev === cz ? prev : cz));
       }
 
-      const selectedIds = Object.keys(appState?.selectedElementIds || {}).filter(
-        (id) => appState.selectedElementIds[id]
-      );
+      const selectedIds = Object.keys(
+        appState?.selectedElementIds || {},
+      ).filter((id) => appState.selectedElementIds[id]);
       if (selectedIds.length === 1) {
         const el = elements.find(
-          (item: any) => item.id === selectedIds[0] && !item.isDeleted
+          (item: any) => item.id === selectedIds[0] && !item.isDeleted,
         );
         if (el) {
           const z = appState.zoom?.value ?? 1;
@@ -257,10 +274,10 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
           const tx = Math.round(Math.max(16, sx));
           const ty = Math.round(Math.max(70, sy - 54));
           setSelectedElement((prev: any) =>
-            prev?.id === el.id && prev?.version === el.version ? prev : el
+            prev?.id === el.id && prev?.version === el.version ? prev : el,
           );
           setFloatingPos((prev) =>
-            prev && prev.x === tx && prev.y === ty ? prev : { x: tx, y: ty }
+            prev && prev.x === tx && prev.y === ty ? prev : { x: tx, y: ty },
           );
         } else {
           setSelectedElement(null);
@@ -273,7 +290,7 @@ export function Whiteboard({ boardId, isSidebarOpen = false }: WhiteboardProps) 
 
       scheduleAutoSave(elements, appState, files);
     },
-    [scheduleAutoSave]
+    [scheduleAutoSave],
   );
 
   if (!mounted) {

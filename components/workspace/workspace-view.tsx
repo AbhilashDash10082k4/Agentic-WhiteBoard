@@ -1,11 +1,25 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import axios from "axios";
+import { Loader2 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/workspace/workspace-header";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
-import { Whiteboard } from "@/components/workspace/Whiteboard";
 import { Document } from "@/components/workspace/Document";
+
+const Whiteboard = dynamic(
+  () =>
+    import("@/components/workspace/Whiteboard").then((mod) => mod.Whiteboard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex size-full items-center justify-center bg-background">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+);
 
 interface WorkspaceViewProps {
   boardId: string;
@@ -21,8 +35,9 @@ export function WorkspaceView({ boardId }: WorkspaceViewProps) {
     async function loadBoard() {
       try {
         const res = await axios.get(`/api/board?boardId=${boardId}`);
-        if (res.data?.data?.name) {
-          setBoardName(res.data.data.name);
+        const fetchedName = res.data?.data?.name;
+        if (fetchedName) {
+          setBoardName(fetchedName);
         }
       } catch {
         // First time opening board; defaults to "Untitled"
