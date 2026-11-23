@@ -3,17 +3,41 @@
 import * as React from "react";
 import axios from "axios";
 import { toast } from "@/hooks/use-toast";
+import { repairFractionalIndicesAndBindings } from "@/components/workspace/fractional-index-helper";
+
+export function sanitizeElements(elements: any[]): any[] {
+  if (!Array.isArray(elements)) return [];
+  const basic = elements.filter(Boolean).map((el) => {
+    const isLinear = el.type === "arrow" || el.type === "line";
+    return {
+      ...el,
+      groupIds: Array.isArray(el.groupIds) ? el.groupIds : [],
+      boundElements: Array.isArray(el.boundElements) ? el.boundElements : [],
+      points:
+        isLinear && Array.isArray(el.points) && el.points.length > 0
+          ? el.points
+          : isLinear
+            ? [
+                [0, 0],
+                [0, 0],
+              ]
+            : el.points,
+      isDeleted: Boolean(el.isDeleted),
+    };
+  });
+  return repairFractionalIndicesAndBindings(basic);
+}
 
 export function getCanvasSignature(
   elements: readonly any[],
   appState: any,
-  files?: Record<string, any>
+  files?: Record<string, any>,
 ): string {
   const elTokens = (elements || [])
     .filter((e) => !e.isDeleted)
     .map(
       (e) =>
-        `${e.id}:${e.version}:${e.x}:${e.y}:${e.width}:${e.height}:${e.strokeColor}:${e.backgroundColor}:${e.fileId || ""}`
+        `${e.id}:${e.version}:${e.x}:${e.y}:${e.width}:${e.height}:${e.strokeColor}:${e.backgroundColor}:${e.fileId || ""}`,
     )
     .join(";");
   const fileTokens = files ? Object.keys(files).sort().join(",") : "";
@@ -23,7 +47,9 @@ export function getCanvasSignature(
 export function useCanvasAutoSave(boardId: string) {
   const [mounted, setMounted] = React.useState(false);
   const [initialData, setInitialData] = React.useState<any>(null);
-  const [saveStatus, setSaveStatus] = React.useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = React.useState<
+    "idle" | "saving" | "saved"
+  >("idle");
 
   const excalidrawAPIRef = React.useRef<any>(null);
   const filesRef = React.useRef<Record<string, any>>({});
@@ -48,7 +74,7 @@ export function useCanvasAutoSave(boardId: string) {
     const currentSig = getCanvasSignature(
       latestDataRef.current.elements,
       latestDataRef.current.appState,
-      allFiles
+      allFiles,
     );
     if (currentSig === lastSavedSigRef.current) return;
 
@@ -63,7 +89,8 @@ export function useCanvasAutoSave(boardId: string) {
       });
 
       if (res.data?.success && res.data?.data) {
-        currentVersionRef.current = res.data.data.version ?? currentVersionRef.current + 1;
+        currentVersionRef.current =
+          res.data.data.version ?? currentVersionRef.current + 1;
         lastSavedSigRef.current = currentSig;
         filesRef.current = allFiles;
         setSaveStatus("saved");
@@ -72,7 +99,8 @@ export function useCanvasAutoSave(boardId: string) {
     } catch (error: any) {
       setSaveStatus("idle");
       toast({
-        title: error?.response?.status === 409 ? "Sync Conflict" : "Save failed",
+        title:
+          error?.response?.status === 409 ? "Sync Conflict" : "Save failed",
         description:
           error?.response?.status === 409
             ? "Newer version on server."
@@ -107,7 +135,7 @@ export function useCanvasAutoSave(boardId: string) {
         }, 10000);
       }
     },
-    [saveCanvasChanges]
+    [saveCanvasChanges],
   );
 
   React.useEffect(() => {
@@ -123,23 +151,27 @@ export function useCanvasAutoSave(boardId: string) {
           filesRef.current = { ...loadedFiles };
 
           if (elements || appState || Object.keys(loadedFiles).length > 0) {
+            const sanitized = sanitizeElements(elements);
             setInitialData({
-              elements: elements || [],
+              elements: sanitized,
               appState: appState || {},
               files: loadedFiles,
             });
             lastSavedSigRef.current = getCanvasSignature(
-              elements || [],
+              sanitized,
               appState || {},
-              loadedFiles
+              loadedFiles,
             );
 
             if (excalidrawAPIRef.current) {
               excalidrawAPIRef.current.updateScene({
-                elements: elements || [],
+                elements: sanitized,
                 appState: appState || {},
               });
-              if (Object.keys(loadedFiles).length > 0 && excalidrawAPIRef.current.addFiles) {
+              if (
+                Object.keys(loadedFiles).length > 0 &&
+                excalidrawAPIRef.current.addFiles
+              ) {
                 excalidrawAPIRef.current.addFiles(Object.values(loadedFiles));
               }
             }
