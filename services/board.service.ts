@@ -55,7 +55,7 @@ export class BoardService {
 
   // Retrieve all boards for an authenticated user, latest edited first
   async getUserBoards(
-    email: string
+    email: string,
   ): Promise<(Board & { updatedAt?: Date | null })[]> {
     if (!email) return [];
     return this.repository.findBoardsByUserEmail(email, false);
@@ -63,26 +63,37 @@ export class BoardService {
 
   // Retrieve starred boards for user
   async getStarredBoards(
-    email: string
+    email: string,
   ): Promise<(Board & { updatedAt?: Date | null })[]> {
     if (!email) return [];
     return this.repository.findBoardsByUserEmail(email, true);
   }
 
   // Rename board ensuring user ownership
-  async renameBoard(boardId: string, name: string, email: string): Promise<Board> {
+  async renameBoard(
+    boardId: string,
+    name: string,
+    email: string,
+  ): Promise<Board> {
     const existing = await this.repository.findBoardById(boardId);
     if (!existing) throw new Error("Board not found");
     if (existing.createdBy && existing.createdBy !== email) {
       throw new Error("Unauthorized to rename this board");
     }
-    const updated = await this.repository.renameBoard(boardId, name.trim() || "Untitled");
+    const updated = await this.repository.renameBoard(
+      boardId,
+      name.trim() || "Untitled",
+    );
     if (!updated) throw new Error("Failed to rename board");
     return updated;
   }
 
   // Toggle or update starred status
-  async toggleStar(boardId: string, isStarred: boolean, email: string): Promise<Board> {
+  async toggleStar(
+    boardId: string,
+    isStarred: boolean,
+    email: string,
+  ): Promise<Board> {
     const existing = await this.repository.findBoardById(boardId);
     if (!existing) throw new Error("Board not found");
     if (existing.createdBy && existing.createdBy !== email) {
@@ -110,9 +121,11 @@ export class BoardService {
     }
 
     // Ensure board row exists in `boards` to satisfy foreign key constraint
-    let board = await this.repository.findBoardById(dto.boardId);
+    let board = await this.getBoardById(dto.boardId);
     if (!board) {
-      const user = dto.email ? await this.repository.findUserByEmail(dto.email) : null;
+      const user = dto.email
+        ? await this.repository.findUserByEmail(dto.email)
+        : null;
       board = await this.repository.upsertBoard({
         boardId: dto.boardId,
         name: "Untitled",
@@ -139,7 +152,9 @@ export class BoardService {
       ? dto.elements.filter(Boolean).map((el: any) => ({
           ...el,
           groupIds: Array.isArray(el?.groupIds) ? el.groupIds : [],
-          boundElements: Array.isArray(el?.boundElements) ? el.boundElements : [],
+          boundElements: Array.isArray(el?.boundElements)
+            ? el.boundElements
+            : [],
           isDeleted: Boolean(el?.isDeleted),
         }))
       : dto.elements;

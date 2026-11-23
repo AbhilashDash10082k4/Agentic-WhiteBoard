@@ -21,6 +21,7 @@ import { ensureShapeTextContainer } from "./text-container-helper";
 import { repairFractionalIndicesAndBindings } from "./fractional-index-helper";
 import { useCanvasAutoSave } from "@/hooks/use-canvas-autosave";
 import { useDiagramGenerator } from "../../hooks/use-diagram-generator";
+import { useElementStyleDefaults } from "@/hooks/use-element-style-defaults";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 
@@ -69,6 +70,11 @@ export function Whiteboard({
 
   const [activeTool, setActiveTool] = React.useState<string>("selection");
   const [apiReady, setApiReady] = React.useState<any>(null);
+
+  const { recordStyleChange, applyToolDefaults } = useElementStyleDefaults(
+    boardId,
+    apiReady,
+  );
   const [selectedElement, setSelectedElement] = React.useState<any>(null);
   const [floatingPos, setFloatingPos] = React.useState<{
     x: number;
@@ -288,15 +294,9 @@ export function Whiteboard({
         excalidrawAPI={apiReady}
         activeTool={activeTool}
         isSidebarOpen={isSidebarOpen}
-        onSelectTool={setActiveTool}
-      />
-      <FloatingToolBar
-        selectedElement={selectedElement}
-        position={floatingPos}
-        excalidrawAPI={apiReady}
-        onClose={() => {
-          setSelectedElement(null);
-          setFloatingPos(null);
+        onSelectTool={(toolId) => {
+          setActiveTool(toolId);
+          applyToolDefaults(toolId);
         }}
       />
 
@@ -365,6 +365,18 @@ export function Whiteboard({
           UIOptions={UI_OPTIONS}
         />
       </div>
+
+      {/* Floating Toolbar rendered after canvas in DOM with z-50 to guarantee dropdowns appear above magnetic connectors */}
+      <FloatingToolBar
+        selectedElement={selectedElement}
+        position={floatingPos}
+        excalidrawAPI={apiReady}
+        onStyleChange={recordStyleChange}
+        onClose={() => {
+          setSelectedElement(null);
+          setFloatingPos(null);
+        }}
+      />
     </div>
   );
 }

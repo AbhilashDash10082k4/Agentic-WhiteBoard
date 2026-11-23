@@ -43,7 +43,7 @@ export function FloatingToolbarOptions({
   const isText = selectedElement.type === "text";
 
   return (
-    <div className="absolute top-12 left-0 z-40 w-72 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in slide-in-from-top-2">
+    <div className="absolute top-12 left-0 z-50 w-72 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in slide-in-from-top-2">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-border/60">
         <span className="text-xs font-bold text-foreground">

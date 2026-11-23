@@ -53,7 +53,7 @@ export function FloatingTextOptions({
   onClose,
 }: FloatingTextOptionsProps) {
   return (
-    <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40 w-64 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl p-3.5 shadow-2xl animate-in fade-in slide-in-from-top-2 select-none">
+    <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 w-64 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl p-3.5 shadow-2xl animate-in fade-in slide-in-from-top-2 select-none">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border/60">
         <span className="text-xs font-bold text-foreground">Text style</span>

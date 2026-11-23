@@ -34,6 +34,13 @@ export async function createDirectionalGhostConnection(
   const defaultStroke = theme === "dark" ? "#F8E0A4" : "#1F150C";
   const strokeColor = sourceEl.strokeColor || defaultStroke;
 
+  const sourceBoundText = (currentElements || []).find(
+    (el: any) =>
+      el?.type === "text" &&
+      el?.containerId === sourceEl.id &&
+      !el?.isDeleted,
+  );
+
   const newShapeSkeleton = {
     type: sourceEl.type || "rectangle",
     id: newShapeId,
@@ -52,8 +59,9 @@ export async function createDirectionalGhostConnection(
     boundElements: [{ id: arrowId, type: "arrow" }],
     label: {
       text: "Text",
-      fontSize: 16,
-      textAlign: "center",
+      fontSize: sourceBoundText?.fontSize || 16,
+      fontFamily: sourceBoundText?.fontFamily || 1,
+      textAlign: sourceBoundText?.textAlign || "center",
       verticalAlign: "middle",
     },
   };
@@ -264,6 +272,13 @@ export async function createCustomDragConnection(
   const defaultStroke = theme === "dark" ? "#F8E0A4" : "#1F150C";
   const strokeColor = sourceEl.strokeColor || defaultStroke;
 
+  const sourceBoundText = (currentElements || []).find(
+    (el: any) =>
+      el?.type === "text" &&
+      el?.containerId === sourceEl.id &&
+      !el?.isDeleted,
+  );
+
   const newShapeSkeleton = {
     type: sourceEl.type || "rectangle",
     id: newShapeId,
@@ -282,8 +297,9 @@ export async function createCustomDragConnection(
     boundElements: [{ id: arrowId, type: "arrow" }],
     label: {
       text: "Text",
-      fontSize: 16,
-      textAlign: "center",
+      fontSize: sourceBoundText?.fontSize || 16,
+      fontFamily: sourceBoundText?.fontFamily || 1,
+      textAlign: sourceBoundText?.textAlign || "center",
       verticalAlign: "middle",
     },
   };

@@ -1,9 +1,9 @@
 "use client";
 
-import * as React from "react";
 import axios from "axios";
 import { toast } from "@/hooks/use-toast";
 import { repairFractionalIndicesAndBindings } from "@/components/workspace/fractional-index-helper";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function sanitizeElements(elements: any[]): any[] {
   if (!Array.isArray(elements)) return [];
@@ -45,21 +45,21 @@ export function getCanvasSignature(
 }
 
 export function useCanvasAutoSave(boardId: string) {
-  const [mounted, setMounted] = React.useState(false);
-  const [initialData, setInitialData] = React.useState<any>(null);
-  const [saveStatus, setSaveStatus] = React.useState<
-    "idle" | "saving" | "saved"
-  >("idle");
+  const [mounted, setMounted] = useState(false);
+  const [initialData, setInitialData] = useState<any>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
 
-  const excalidrawAPIRef = React.useRef<any>(null);
-  const filesRef = React.useRef<Record<string, any>>({});
-  const saveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-  const currentVersionRef = React.useRef<number>(1);
-  const lastSavedSigRef = React.useRef<string>("");
-  const latestDataRef = React.useRef<any>(null);
-  const isInitialLoadRef = React.useRef(true);
+  const excalidrawAPIRef = useRef<any>(null);
+  const filesRef = useRef<Record<string, any>>({});
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentVersionRef = useRef<number>(1);
+  const lastSavedSigRef = useRef<string>("");
+  const latestDataRef = useRef<any>(null);
+  const isInitialLoadRef = useRef(true);
 
-  const saveCanvasChanges = React.useCallback(async () => {
+  const saveCanvasChanges = useCallback(async () => {
     if (!latestDataRef.current || !boardId) return;
 
     const sceneFiles = excalidrawAPIRef.current?.getFiles
@@ -110,7 +110,7 @@ export function useCanvasAutoSave(boardId: string) {
     }
   }, [boardId]);
 
-  const scheduleAutoSave = React.useCallback(
+  const scheduleAutoSave = useCallback(
     (elements: readonly any[], appState: any, files: any) => {
       if (isInitialLoadRef.current) return;
 
@@ -138,7 +138,7 @@ export function useCanvasAutoSave(boardId: string) {
     [saveCanvasChanges],
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
     async function loadBoardData() {
       try {

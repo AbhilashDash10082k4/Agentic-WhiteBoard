@@ -363,7 +363,7 @@ export function MagneticConnectorOverlay({
   return (
     <div
       ref={containerRef}
-      className="pointer-events-none absolute inset-0 z-30 overflow-visible"
+      className="pointer-events-none absolute inset-0 z-20 overflow-visible"
     >
       {/* Directional Hover Preview */}
       {hoverPreview && hoveredDir && (

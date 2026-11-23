@@ -1,6 +1,6 @@
 /**
  * File: FloatingToolBar.tsx
- * Description: Floating context toolbar positioned above selected element for quick styling, coloring, duplication, deletion, and text styling options.
+ * Description: Floating context toolbar positioned above selected element for styling, text styling options, and layer management.
  * Connects to: Whiteboard.tsx, floating-toolbar-options.tsx, floating-text-options.tsx, text-container-helper.ts, fractional-index-helper.ts
  */
 
@@ -33,6 +33,7 @@ interface FloatingToolBarProps {
   selectedElement: any | null;
   position: { x: number; y: number } | null;
   excalidrawAPI: any;
+  onStyleChange?: (elementType: string, updates: Record<string, any>) => void;
   onClose?: () => void;
 }
 
@@ -47,13 +48,14 @@ const PALETTE_COLORS = [
 
 /**
  * Function: FloatingToolBar
- * Description: Renders context toolbar over selected canvas element with stroke, fill, text style popovers, and layer management.
+ * Description: Context toolbar positioned over selected canvas element with stroke, fill, text style popovers, and default style syncing.
  * Connects to: Whiteboard.tsx
  */
 export function FloatingToolBar({
   selectedElement,
   position,
   excalidrawAPI,
+  onStyleChange,
   onClose,
 }: FloatingToolBarProps) {
   const [showOptions, setShowOptions] = React.useState(false);
@@ -66,9 +68,12 @@ export function FloatingToolBar({
 
   const isLine =
     selectedElement.type === "line" || selectedElement.type === "arrow";
-  const canHaveText = ["text", "rectangle", "diamond", "ellipse"].includes(
-    selectedElement.type,
-  );
+  const canHaveText = [
+    "text",
+    "rectangle",
+    "diamond",
+    "ellipse",
+  ].includes(selectedElement.type);
 
   const getBoundText = (): any | null => {
     if (!excalidrawAPI || !selectedElement) return null;
@@ -87,7 +92,8 @@ export function FloatingToolBar({
   const boundText = getBoundText();
   const currentFontFamily =
     boundText?.fontFamily ?? selectedElement.fontFamily ?? 1;
-  const currentFontSize = boundText?.fontSize ?? selectedElement.fontSize ?? 20;
+  const currentFontSize =
+    boundText?.fontSize ?? selectedElement.fontSize ?? 20;
   const currentTextAlign =
     boundText?.textAlign ?? selectedElement.textAlign ?? "center";
 
@@ -97,12 +103,13 @@ export function FloatingToolBar({
     const boundTextId = selectedElement.boundElements?.find(
       (b: any) => b.type === "text",
     )?.id;
+
     const updated = all.map((el: any) => {
       if (el.id === selectedElement.id) {
         return {
           ...el,
           ...updates,
-          version: el.version + 1,
+          version: (el.version || 0) + 1,
           versionNonce: Math.floor(Math.random() * 1000000),
         };
       }
@@ -110,15 +117,18 @@ export function FloatingToolBar({
         return {
           ...el,
           isDeleted: true,
-          version: el.version + 1,
+          version: (el.version || 0) + 1,
           versionNonce: Math.floor(Math.random() * 1000000),
         };
       }
       return el;
     });
+
     excalidrawAPI.updateScene({
       elements: repairFractionalIndicesAndBindings(updated),
     });
+
+    onStyleChange?.(selectedElement.type, updates);
   };
 
   const handleUpdateTextStyle = async (updates: Record<string, any>) => {
@@ -140,6 +150,7 @@ export function FloatingToolBar({
       excalidrawAPI.updateScene({
         elements: repairFractionalIndicesAndBindings(updated),
       });
+      onStyleChange?.("text", updates);
       return;
     }
 
@@ -183,6 +194,9 @@ export function FloatingToolBar({
         elements: repairFractionalIndicesAndBindings(updated),
       });
     }
+
+    onStyleChange?.(selectedElement.type, updates);
+    onStyleChange?.("text", updates);
   };
 
   const handleEditText = async () => {
@@ -247,7 +261,9 @@ export function FloatingToolBar({
     if (!target) return;
     const bText = all.find(
       (el: any) =>
-        el?.type === "text" && el?.containerId === target.id && !el?.isDeleted,
+        el?.type === "text" &&
+        el?.containerId === target.id &&
+        !el?.isDeleted,
     );
     const movedIds = new Set([target.id, ...(bText ? [bText.id] : [])]);
     const rest = all.filter((el: any) => !movedIds.has(el?.id));
@@ -266,7 +282,9 @@ export function FloatingToolBar({
     if (!target) return;
     const bText = all.find(
       (el: any) =>
-        el?.type === "text" && el?.containerId === target.id && !el?.isDeleted,
+        el?.type === "text" &&
+        el?.containerId === target.id &&
+        !el?.isDeleted,
     );
     const movedIds = new Set([target.id, ...(bText ? [bText.id] : [])]);
     const rest = all.filter((el: any) => !movedIds.has(el?.id));
@@ -298,7 +316,7 @@ export function FloatingToolBar({
   return (
     <div
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
-      className="fixed z-30 -translate-x-1/2 transition-all duration-75 pointer-events-auto select-none"
+      className="fixed z-50 -translate-x-1/2 transition-all duration-75 pointer-events-auto select-none"
     >
       {/* Main Floating Pill Bar */}
       <div className="flex items-center gap-1 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-2.5 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
@@ -424,7 +442,7 @@ export function FloatingToolBar({
 
       {/* Quick Color Palette Popover */}
       {showColorPicker && (
-        <div className="absolute top-12 left-6 z-40 flex items-center gap-1.5 rounded-xl border border-border/80 bg-background/95 backdrop-blur-md p-2 shadow-lg animate-in fade-in">
+        <div className="absolute top-12 left-6 z-50 flex items-center gap-1.5 rounded-xl border border-border/80 bg-background/95 backdrop-blur-md p-2 shadow-lg animate-in fade-in">
           {PALETTE_COLORS.map((c) => (
             <button
               key={c}
