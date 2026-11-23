@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home,
   Star,
@@ -32,11 +33,11 @@ import { AnimatedUpgradeButton } from "@/components/dashboard/animated-upgrade-b
 
 // Navigation menu items
 const navItems = [
-  { title: "Home", icon: Home },
-  { title: "Starred", icon: Star },
-  { title: "Shared", icon: Users },
-  { title: "AI Helper", icon: Sparkles },
-  { title: "Settings", icon: Settings },
+  { title: "Home", icon: Home, href: "/dashboard" },
+  { title: "Starred", icon: Star, href: "/dashboard/starred" },
+  { title: "Shared", icon: Users, href: "/dashboard" },
+  { title: "AI Helper", icon: Sparkles, href: "/dashboard" },
+  { title: "Settings", icon: Settings, href: "/dashboard" },
 ];
 
 interface DashboardSidebarProps {
@@ -48,7 +49,7 @@ export function DashboardSidebar({
   boardsUsed = 3,
   totalBoards = 5,
 }: DashboardSidebarProps) {
-  const [activeItem, setActiveItem] = React.useState("Home");
+  const pathname = usePathname();
 
   // Calculate percentage used for progress bar
   const usagePercentage = Math.min(
@@ -130,24 +131,28 @@ export function DashboardSidebar({
             <SidebarMenu className="gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isSelected = activeItem === item.title;
+                const isSelected =
+                  item.href === "/dashboard/starred"
+                    ? pathname === "/dashboard/starred"
+                    : pathname === "/dashboard" && item.title === "Home";
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      isActive={isSelected}
-                      tooltip={item.title}
-                      onClick={() => setActiveItem(item.title)}
-                      className={`h-9 px-3 rounded-lg text-sm transition-colors ${
-                        isSelected
-                          ? "bg-neutral-200/70 dark:bg-neutral-800 text-foreground font-semibold"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      <Icon className="size-4 shrink-0" />
-                      <span className="group-data-[collapsible=icon]:hidden">
-                        {item.title}
-                      </span>
-                    </SidebarMenuButton>
+                    <Link href={item.href} className="w-full block">
+                      <SidebarMenuButton
+                        isActive={isSelected}
+                        tooltip={item.title}
+                        className={`h-9 px-3 rounded-lg text-sm transition-colors w-full ${
+                          isSelected
+                            ? "bg-neutral-200/70 dark:bg-neutral-800 text-foreground font-semibold"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <Icon className="size-4 shrink-0" />
+                        <span className="group-data-[collapsible=icon]:hidden">
+                          {item.title}
+                        </span>
+                      </SidebarMenuButton>
+                    </Link>
                   </SidebarMenuItem>
                 );
               })}
