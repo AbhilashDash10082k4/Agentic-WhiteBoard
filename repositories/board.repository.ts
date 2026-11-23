@@ -8,10 +8,24 @@ import {
   type User,
   type BoardData,
 } from "@/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 
 // Repository handles direct database interactions for boards and user lookups
 export class BoardRepository {
+  private migrationChecked = false;
+
+  private async ensureSchema() {
+    if (this.migrationChecked) return;
+    try {
+      await db.execute(
+        sql`ALTER TABLE "boards" ADD COLUMN IF NOT EXISTS "is_starred" boolean DEFAULT false NOT NULL;`
+      );
+      this.migrationChecked = true;
+    } catch {
+      // Ignore if already applied or restricted
+    }
+  }
+
   // Find user by unique email address
   async findUserByEmail(email: string): Promise<User | null> {
     const records = await db
@@ -25,24 +39,22 @@ export class BoardRepository {
 
   // Insert a new board record into database
   async insertBoard(data: NewBoard): Promise<Board> {
+    await this.ensureSchema();
     const inserted = await db.insert(boards).values(data).returning();
-
     return inserted[0];
   }
 
   // Upsert board: update name if board exists, otherwise insert new record
   async upsertBoard(data: NewBoard): Promise<Board> {
+    await this.ensureSchema();
     const existing = await this.findBoardById(data.boardId);
     if (existing) {
       const updated = await db
         .update(boards)
-        .set({
-          name: data.name ?? existing.name,
-        })
+        .set({ name: data.name ?? existing.name })
         .where(eq(boards.boardId, data.boardId))
         .returning();
 
-      // Bump recency on board edit
       try {
         await db
           .update(boardData)
@@ -60,6 +72,7 @@ export class BoardRepository {
 
   // Find board by its unique public boardId
   async findBoardById(boardId: string): Promise<Board | null> {
+    await this.ensureSchema();
     const records = await db
       .select()
       .from(boards)
@@ -71,8 +84,14 @@ export class BoardRepository {
 
   // Find all boards owned by user email, ordered by latest edited first
   async findBoardsByUserEmail(
-    email: string
+    email: string,
+    starredOnly = false
   ): Promise<(Board & { updatedAt?: Date | null })[]> {
+    await this.ensureSchema();
+    const conditions = starredOnly
+      ? and(eq(boards.createdBy, email), eq(boards.isStarred, true))
+      : eq(boards.createdBy, email);
+
     const records = await db
       .select({
         id: boards.id,
@@ -80,20 +99,53 @@ export class BoardRepository {
         name: boards.name,
         userId: boards.userId,
         createdBy: boards.createdBy,
+        isStarred: boards.isStarred,
         createdAt: boards.createdAt,
         updatedAt: boardData.updatedAt,
       })
       .from(boards)
       .leftJoin(boardData, eq(boards.boardId, boardData.projectId))
-      .where(eq(boards.createdBy, email))
-      .orderBy(
-        desc(sql`COALESCE(${boardData.updatedAt}, ${boards.createdAt})`)
-      );
+      .where(conditions)
+      .orderBy(desc(sql`COALESCE(${boardData.updatedAt}, ${boards.createdAt})`));
 
     return records.map((r) => ({
       ...r,
       updatedAt: r.updatedAt ?? r.createdAt,
     }));
+  }
+
+  // Rename board by boardId
+  async renameBoard(boardId: string, name: string): Promise<Board | null> {
+    await this.ensureSchema();
+    const updated = await db
+      .update(boards)
+      .set({ name })
+      .where(eq(boards.boardId, boardId))
+      .returning();
+    return updated[0] ?? null;
+  }
+
+  // Toggle or set star state
+  async toggleStar(boardId: string, isStarred: boolean): Promise<Board | null> {
+    await this.ensureSchema();
+    const updated = await db
+      .update(boards)
+      .set({ isStarred })
+      .where(eq(boards.boardId, boardId))
+      .returning();
+    return updated[0] ?? null;
+  }
+
+  // Delete board record and associated canvas data
+  async deleteBoard(boardId: string): Promise<boolean> {
+    await this.ensureSchema();
+    try {
+      await db.delete(boardData).where(eq(boardData.projectId, boardId));
+    } catch {
+      // Ignore if no boardData row
+    }
+    const deleted = await db.delete(boards).where(eq(boards.boardId, boardId)).returning();
+    return deleted.length > 0;
   }
 
   // Find canvas elements, appState, and files for a board
@@ -118,7 +170,6 @@ export class BoardRepository {
     const existing = await this.findBoardDataByBoardId(data.projectId);
 
     if (existing) {
-      // OCC Check: conflict if client version does not match existing version
       if (
         data.clientVersion !== undefined &&
         existing.version !== undefined &&
@@ -131,10 +182,8 @@ export class BoardRepository {
       const updated = await db
         .update(boardData)
         .set({
-          elements:
-            data.elements !== undefined ? data.elements : existing.elements,
-          appState:
-            data.appState !== undefined ? data.appState : existing.appState,
+          elements: data.elements !== undefined ? data.elements : existing.elements,
+          appState: data.appState !== undefined ? data.appState : existing.appState,
           files: data.files !== undefined ? data.files : existing.files,
           version: nextVersion,
           updatedAt: new Date(),

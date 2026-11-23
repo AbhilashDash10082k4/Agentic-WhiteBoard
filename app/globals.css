@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "lenis/dist/lenis.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -48,72 +49,74 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    /* Light Theme Palette:*/
+    --background: #FFFDE1;
+    --foreground: #1F150C;
+    --card: #FFFAD3;
+    --card-foreground: #1F150C;
+    --popover: #FFFAD3;
+    --popover-foreground: #1F150C;
+    --primary: #010736;
+    --primary-foreground: #FFEFD2;
+    --secondary: #FFDBB0;
+    --secondary-foreground: #010736;
+    --muted: #FFDBB0;
+    --muted-foreground: #6b5c3e;
+    --accent: #FEF3E2;
+    --accent-foreground: #010736;
+    --destructive: #d93838;
+    --border: #F8E0A4;
+    --input: #FFDBB0;
+    --ring: #FFFFFF;
+    --chart-1: #FFFFFF;
+    --chart-2: #FFDBB0;
+    --chart-3: #22396F;
+    --chart-4: #0D1C42;
+    --chart-5: #010736;
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar: #FFF6A9;
+    --sidebar-foreground: #;
+    --sidebar-primary: #010736;
+    --sidebar-primary-foreground: #FFFAD3;
+    --sidebar-accent: #FFFFFF;
+    --sidebar-accent-foreground: #010736;
+    --sidebar-border: #FCF2E5;
+    --sidebar-ring: #010736;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.145 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* Dark Theme Palette: #010736, #0D1C42, #22396F, #1F150C */
+    --background: #010736;
+    --foreground: #FFFAD3;
+    --card: #0D1C42;
+    --card-foreground: #FFFAD3;
+    --popover: #0D1C42;
+    --popover-foreground: #FFFAD3;
+    --primary: #22396F;
+    --primary-foreground: #FFFAD3;
+    --secondary: #1F150C;
+    --secondary-foreground: #FFFAD3;
+    --muted: #0D1C42;
+    --muted-foreground: #a4b3d6;
+    --accent: #22396F;
+    --accent-foreground: #FFFAD3;
+    --destructive: #ef4444;
+    --border: #22396F;
+    --input: #0D1C42;
+    --ring: #22396F;
+    --chart-1: #22396F;
+    --chart-2: #0D1C42;
+    --chart-3: #F8E0A4;
+    --chart-4: #FFDBB0;
+    --chart-5: #1F150C;
+    --sidebar: #010736;
+    --sidebar-foreground: #FFFAD3;
+    --sidebar-primary: #22396F;
+    --sidebar-primary-foreground: #FFFAD3;
+    --sidebar-accent: #0D1C42;
+    --sidebar-accent-foreground: #FFFAD3;
+    --sidebar-border: #0D1C42;
+    --sidebar-ring: #22396F;
 }
 
 @keyframes border-rotate {
@@ -127,6 +130,24 @@
 
 .animate-border-rotate {
   animation: border-rotate 3.5s linear infinite;
+}
+
+/* Lenis Smooth Scroll Global Overrides */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: clip;
 }
 
 @layer base {

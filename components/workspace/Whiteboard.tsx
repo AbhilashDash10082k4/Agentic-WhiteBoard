@@ -1,25 +1,26 @@
+/**
+ * File: Whiteboard.tsx
+ * Description: Core whiteboard component integrating dynamic Excalidraw instance, toolbars, overlays, and autosave.
+ * Connects to: FloatingToolBar.tsx, magnetic-connector-overlay.tsx, canvas-toolbar.tsx, canvas-bottom-bar.tsx, use-canvas-autosave.ts
+ */
+
 "use client";
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import axios from "axios";
 import { Loader2, Check } from "lucide-react";
 import { useTheme } from "next-themes";
-import { toast } from "@/hooks/use-toast";
 import { CanvasToolbar } from "@/components/workspace/canvas-toolbar";
 import { CanvasBottomBar } from "@/components/workspace/canvas-bottom-bar";
 import { FloatingToolBar } from "@/components/workspace/FloatingToolBar";
+import { MagneticConnectorOverlay } from "@/components/workspace/magnetic-connector-overlay";
 import { AIChatPopover } from "@/components/workspace/ai-chat/ai-chat-popover";
 import { AIChatSidebar } from "@/components/workspace/ai-chat/ai-chat-sidebar";
 import { ChatMessage } from "@/components/workspace/ai-chat/ai-chat-types";
-import {
-  getRightmostPlacementPosition,
-  appendElementsToCanvas,
-  replacePlaceholderWithGeneratedElements,
-  createAIGenerationPlaceholderElements,
-  convertToElements,
-} from "@/components/workspace/ai-chat/ai-canvas-generator";
-import { useCanvasAutoSave } from "../../hooks/use-canvas-autosave";
+import { ensureShapeTextContainer } from "./text-container-helper";
+import { repairFractionalIndicesAndBindings } from "./fractional-index-helper";
+import { useCanvasAutoSave } from "@/hooks/use-canvas-autosave";
+import { useDiagramGenerator } from "../../hooks/use-diagram-generator";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
 
@@ -48,6 +49,11 @@ interface WhiteboardProps {
   isSidebarOpen?: boolean;
 }
 
+/**
+ * Function: Whiteboard
+ * Description: Main canvas workspace rendering the Excalidraw engine, floating context toolbar, and magnetic connectors.
+ * Connects to: page.tsx, useCanvasAutoSave, FloatingToolBar.tsx, MagneticConnectorOverlay.tsx
+ */
 export function Whiteboard({
   boardId,
   isSidebarOpen = false,
@@ -68,13 +74,21 @@ export function Whiteboard({
     x: number;
     y: number;
   } | null>(null);
-  const [zoom, setZoom] = React.useState<number>(100);
+  const [viewport, setViewport] = React.useState({
+    scrollX: 0,
+    scrollY: 0,
+    zoom: 1,
+  });
   const [chatMode, setChatMode] = React.useState<
     "closed" | "popover" | "sidebar"
   >("closed");
   const [activeSidekick, setActiveSidekick] = React.useState<string>("general");
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
-  const [isGenerating, setIsGenerating] = React.useState(false);
+
+  const { isGenerating, handleGenerateDiagram } = useDiagramGenerator(
+    excalidrawAPIRef,
+    setMessages,
+  );
 
   const { resolvedTheme } = useTheme();
 
@@ -95,10 +109,42 @@ export function Whiteboard({
     return () => window.removeEventListener("pointerdown", handleClickOutside);
   }, [chatMode]);
 
+  // Turn selected shape into editable text container on double click
+  React.useEffect(() => {
+    const onDblClick = () => {
+      const api = excalidrawAPIRef.current;
+      if (!api) return;
+      const appState = api.getAppState?.();
+      const selectedIds = Object.keys(
+        appState?.selectedElementIds || {},
+      ).filter((id) => appState.selectedElementIds[id]);
+      if (selectedIds.length === 1) {
+        const elements = api.getSceneElements?.() || [];
+        const shape = elements.find(
+          (el: any) => el.id === selectedIds[0] && !el.isDeleted,
+        );
+        if (shape && ["rectangle", "diamond", "ellipse"].includes(shape.type)) {
+          ensureShapeTextContainer(shape, api);
+        }
+      }
+    };
+    window.addEventListener("dblclick", onDblClick);
+    return () => window.removeEventListener("dblclick", onDblClick);
+  }, [excalidrawAPIRef]);
+
   const handleExcalidrawAPI = React.useCallback(
     (api: any) => {
       excalidrawAPIRef.current = api;
       setApiReady((prev: any) => (prev === api ? prev : api));
+      try {
+        const currentElements = api.getSceneElementsIncludingDeleted?.() || [];
+        if (currentElements.length > 0) {
+          const repaired = repairFractionalIndicesAndBindings(currentElements);
+          api.updateScene({ elements: repaired });
+        }
+      } catch {
+        // ignore
+      }
       if (
         filesRef.current &&
         Object.keys(filesRef.current).length > 0 &&
@@ -146,136 +192,71 @@ export function Whiteboard({
   }, []);
 
   const handleSendMessage = React.useCallback((text: string) => {
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: text,
+        timestamp: new Date(),
+      },
+    ]);
     setChatMode("sidebar");
   }, []);
 
-  const handleGenerateDiagram = React.useCallback(
-    async ({
-      diagramType,
-      prompt,
-      apiKey,
-      provider = "gemini",
-    }: {
-      diagramType: string;
-      prompt: string;
-      apiKey: string;
-      provider: "gemini" | "openai";
-    }) => {
-      if (!excalidrawAPIRef.current) return;
-      setIsGenerating(true);
-
-      const existing =
-        excalidrawAPIRef.current.getSceneElementsIncludingDeleted();
-      const pos = getRightmostPlacementPosition(existing, 80);
-
-      const placeholderId = `ai-placeholder-${Date.now()}`;
-      const placeholderElements = await createAIGenerationPlaceholderElements(
-        pos.x,
-        pos.y,
-        `Generating ${diagramType}`,
-      );
-      appendElementsToCanvas(excalidrawAPIRef.current, placeholderElements);
-
-      const userMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: "user",
-        content: `Generate ${diagramType}: ${prompt}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-
-      try {
-        const res = await axios.post("/api/ai/generate", {
-          apiKey,
-          provider,
-          prompt,
-          diagramType,
-          position: pos,
-        });
-
-        const diagramPayload = res.data?.data;
-        if (res.data?.success && diagramPayload?.elements) {
-          const converted = await convertToElements(diagramPayload.elements);
-          replacePlaceholderWithGeneratedElements(
-            excalidrawAPIRef.current,
-            placeholderId,
-            converted,
-          );
-
-          const generatedTitle = diagramPayload.title || diagramType;
-          const assistantMsg: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: `Successfully generated ${generatedTitle} on canvas.`,
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, assistantMsg]);
-
-          toast({
-            title: "Diagram Generated",
-            description: `Generated ${generatedTitle} on canvas.`,
-            variant: "success",
-          });
-        } else {
-          throw new Error(res.data?.message || "Failed to generate diagram.");
-        }
-      } catch (err: any) {
-        const errorMsg =
-          err?.response?.data?.message || err?.message || "Generation failed";
-        const failMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `Error: ${errorMsg}`,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, failMsg]);
-        toast({
-          title: "Generation Error",
-          description: errorMsg,
-          variant: "destructive",
-        });
-      } finally {
-        setIsGenerating(false);
-      }
-    },
-    [excalidrawAPIRef],
-  );
-
   const handleCanvasChange = React.useCallback(
     (elements: readonly any[], appState: any, files: any) => {
+      if (!elements || !Array.isArray(elements)) return;
       if (appState?.activeTool?.type) {
         setActiveTool((prev) =>
           prev === appState.activeTool.type ? prev : appState.activeTool.type,
         );
       }
-      if (appState?.zoom?.value) {
-        const cz = Math.round(appState.zoom.value * 100);
-        setZoom((prev) => (prev === cz ? prev : cz));
-      }
+      const curZoom = appState?.zoom?.value ?? 1;
+      const curScrollX = appState?.scrollX ?? 0;
+      const curScrollY = appState?.scrollY ?? 0;
+      setViewport((prev) =>
+        prev.scrollX === curScrollX &&
+        prev.scrollY === curScrollY &&
+        prev.zoom === curZoom
+          ? prev
+          : { scrollX: curScrollX, scrollY: curScrollY, zoom: curZoom },
+      );
 
       const selectedIds = Object.keys(
         appState?.selectedElementIds || {},
       ).filter((id) => appState.selectedElementIds[id]);
       if (selectedIds.length === 1) {
         const el = elements.find(
-          (item: any) => item.id === selectedIds[0] && !item.isDeleted,
+          (item: any) => item?.id === selectedIds[0] && !item?.isDeleted,
         );
         if (el) {
           const z = appState.zoom?.value ?? 1;
-          const sx = (el.x + (appState.scrollX ?? 0)) * z;
-          const sy = (el.y + (appState.scrollY ?? 0)) * z;
-          const tx = Math.round(Math.max(16, sx));
+          const sw = Math.abs(el.width ?? 0) * z;
+          const sx =
+            (Math.min(el.x ?? 0, (el.x ?? 0) + (el.width ?? 0)) +
+              (appState.scrollX ?? 0)) *
+            z;
+          const sy =
+            (Math.min(el.y ?? 0, (el.y ?? 0) + (el.height ?? 0)) +
+              (appState.scrollY ?? 0)) *
+            z;
+          const tx = Math.round(sx + sw / 2);
           const ty = Math.round(Math.max(70, sy - 54));
-          setSelectedElement((prev: any) =>
-            prev?.id === el.id && prev?.version === el.version ? prev : el,
-          );
+          setSelectedElement((prev: any) => {
+            if (
+              prev &&
+              prev.id === el.id &&
+              prev.version === el.version &&
+              prev.x === el.x &&
+              prev.y === el.y &&
+              prev.width === el.width &&
+              prev.height === el.height
+            ) {
+              return prev;
+            }
+            return { ...el };
+          });
           setFloatingPos((prev) =>
             prev && prev.x === tx && prev.y === ty ? prev : { x: tx, y: ty },
           );
@@ -344,7 +325,7 @@ export function Whiteboard({
       />
 
       <CanvasBottomBar
-        zoom={zoom}
+        zoom={Math.round(viewport.zoom * 100)}
         isSidebarOpen={isSidebarOpen}
         isRightSidebarOpen={chatMode === "sidebar"}
         isChatOpen={chatMode !== "closed"}
@@ -369,13 +350,21 @@ export function Whiteboard({
         )}
       </div>
 
-      <Excalidraw
-        theme={resolvedTheme === "dark" ? "dark" : "light"}
-        initialData={initialData}
-        onChange={handleCanvasChange}
-        excalidrawAPI={handleExcalidrawAPI}
-        UIOptions={UI_OPTIONS}
-      />
+      {/* Canvas container: exactly matches Excalidraw viewport */}
+      <div className="relative size-full overflow-hidden">
+        <MagneticConnectorOverlay
+          selectedElement={selectedElement}
+          excalidrawAPI={apiReady}
+          viewport={viewport}
+        />
+        <Excalidraw
+          theme={resolvedTheme === "dark" ? "dark" : "light"}
+          initialData={initialData}
+          onChange={handleCanvasChange}
+          excalidrawAPI={handleExcalidrawAPI}
+          UIOptions={UI_OPTIONS}
+        />
+      </div>
     </div>
   );
 }

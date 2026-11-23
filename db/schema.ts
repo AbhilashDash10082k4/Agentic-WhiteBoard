@@ -1,4 +1,5 @@
 import {
+  boolean,
   customType,
   index,
   integer,
@@ -32,6 +33,7 @@ export const boards = pgTable("boards", {
   name: text("name"),
   userId: integer("user_id").references(() => users.id),
   createdBy: text("created_by"),
+  isStarred: boolean("is_starred").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

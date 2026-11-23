@@ -58,7 +58,49 @@ export class BoardService {
     email: string
   ): Promise<(Board & { updatedAt?: Date | null })[]> {
     if (!email) return [];
-    return this.repository.findBoardsByUserEmail(email);
+    return this.repository.findBoardsByUserEmail(email, false);
+  }
+
+  // Retrieve starred boards for user
+  async getStarredBoards(
+    email: string
+  ): Promise<(Board & { updatedAt?: Date | null })[]> {
+    if (!email) return [];
+    return this.repository.findBoardsByUserEmail(email, true);
+  }
+
+  // Rename board ensuring user ownership
+  async renameBoard(boardId: string, name: string, email: string): Promise<Board> {
+    const existing = await this.repository.findBoardById(boardId);
+    if (!existing) throw new Error("Board not found");
+    if (existing.createdBy && existing.createdBy !== email) {
+      throw new Error("Unauthorized to rename this board");
+    }
+    const updated = await this.repository.renameBoard(boardId, name.trim() || "Untitled");
+    if (!updated) throw new Error("Failed to rename board");
+    return updated;
+  }
+
+  // Toggle or update starred status
+  async toggleStar(boardId: string, isStarred: boolean, email: string): Promise<Board> {
+    const existing = await this.repository.findBoardById(boardId);
+    if (!existing) throw new Error("Board not found");
+    if (existing.createdBy && existing.createdBy !== email) {
+      throw new Error("Unauthorized to modify this board");
+    }
+    const updated = await this.repository.toggleStar(boardId, isStarred);
+    if (!updated) throw new Error("Failed to update star");
+    return updated;
+  }
+
+  // Delete board ensuring user ownership
+  async deleteBoard(boardId: string, email: string): Promise<boolean> {
+    const existing = await this.repository.findBoardById(boardId);
+    if (!existing) throw new Error("Board not found");
+    if (existing.createdBy && existing.createdBy !== email) {
+      throw new Error("Unauthorized to delete this board");
+    }
+    return this.repository.deleteBoard(boardId);
   }
 
   // Save or update canvas data (elements, appState, files) ensuring board exists
@@ -93,9 +135,18 @@ export class BoardService {
       };
     }
 
+    const cleanElements = Array.isArray(dto.elements)
+      ? dto.elements.filter(Boolean).map((el: any) => ({
+          ...el,
+          groupIds: Array.isArray(el?.groupIds) ? el.groupIds : [],
+          boundElements: Array.isArray(el?.boundElements) ? el.boundElements : [],
+          isDeleted: Boolean(el?.isDeleted),
+        }))
+      : dto.elements;
+
     const result = await this.repository.upsertBoardData({
       projectId: dto.boardId,
-      elements: dto.elements,
+      elements: cleanElements,
       appState: safeAppState,
       files: dto.files,
       clientVersion: dto.version,

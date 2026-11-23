@@ -48,13 +48,71 @@ export class BoardController {
         return NextResponse.json({ success: true, data: board }, { status: 200 });
       }
 
-      // Case 2: List all boards for the authenticated user
+      // Case 2: List all boards for the authenticated user (or starred only)
       const auth = await requireAuthUser();
       if (auth.errorResponse) return auth.errorResponse;
       const { user } = auth;
 
-      const userBoards = await this.service.getUserBoards(user.email);
+      const isStarred = searchParams.get("starred") === "true";
+      const userBoards = isStarred
+        ? await this.service.getStarredBoards(user.email)
+        : await this.service.getUserBoards(user.email);
       return NextResponse.json({ success: true, data: userBoards }, { status: 200 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Internal Server Error";
+      return NextResponse.json({ success: false, message }, { status: 500 });
+    }
+  }
+
+  // Handle DELETE /api/board?boardId=...
+  async handleDeleteBoard(req: NextRequest): Promise<NextResponse> {
+    try {
+      const auth = await requireAuthUser();
+      if (auth.errorResponse) return auth.errorResponse;
+      const { user } = auth;
+
+      const { searchParams } = new URL(req.url);
+      let boardId = searchParams.get("boardId");
+      if (!boardId) {
+        try {
+          const body = await req.json();
+          boardId = body.boardId;
+        } catch {}
+      }
+
+      if (!boardId) {
+        return NextResponse.json({ success: false, message: "Missing boardId" }, { status: 400 });
+      }
+
+      await this.service.deleteBoard(boardId, user.email);
+      return NextResponse.json({ success: true, message: "Board deleted successfully" }, { status: 200 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Internal Server Error";
+      return NextResponse.json({ success: false, message }, { status: 500 });
+    }
+  }
+
+  // Handle PATCH /api/board (rename or toggle star)
+  async handlePatchBoard(req: NextRequest): Promise<NextResponse> {
+    try {
+      const auth = await requireAuthUser();
+      if (auth.errorResponse) return auth.errorResponse;
+      const { user } = auth;
+
+      const body = await req.json();
+      if (!body.boardId) {
+        return NextResponse.json({ success: false, message: "Missing boardId" }, { status: 400 });
+      }
+
+      let updatedBoard = null;
+      if (typeof body.name === "string") {
+        updatedBoard = await this.service.renameBoard(body.boardId, body.name, user.email);
+      }
+      if (typeof body.isStarred === "boolean") {
+        updatedBoard = await this.service.toggleStar(body.boardId, body.isStarred, user.email);
+      }
+
+      return NextResponse.json({ success: true, data: updatedBoard }, { status: 200 });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Internal Server Error";
       return NextResponse.json({ success: false, message }, { status: 500 });
