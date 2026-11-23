@@ -1,16 +1,36 @@
-// Helper to convert element skeletons into Excalidraw elements dynamically without breaking SSR
-export async function convertToElements(skeletons: any[]): Promise<any[]> {
+/**
+ * File: ai-canvas-generator.ts
+ * Description: Generates Excalidraw-compatible elements, AI generation placeholders, and placement utilities.
+ * Connects to: connector-binding-helper.ts, text-container-helper.ts, ai-chat-popover.tsx
+ */
+
+/**
+ * Function: convertToElements
+ * Description: Converts element skeletons into Excalidraw elements dynamically without breaking SSR.
+ * Connects to: connector-binding-helper.ts, text-container-helper.ts, ai-chat-popover.tsx
+ */
+export async function convertToElements(
+  skeletons: any[],
+  opts?: { regenerateIds?: boolean },
+): Promise<any[]> {
   if (typeof window === "undefined" || !skeletons || skeletons.length === 0) {
     return skeletons || [];
   }
   const { convertToExcalidrawElements } = await import("@excalidraw/excalidraw");
-  return convertToExcalidrawElements(skeletons);
+  return convertToExcalidrawElements(skeletons, {
+    regenerateIds: false,
+    ...opts,
+  });
 }
 
-// Calculate next available empty position to the right of all existing elements
+/**
+ * Function: getRightmostPlacementPosition
+ * Description: Calculates next available empty position to the right of all active scene elements.
+ * Connects to: ai-chat-popover.tsx
+ */
 export function getRightmostPlacementPosition(
   elements: readonly any[],
-  gap = 80
+  gap = 80,
 ): { x: number; y: number } {
   const activeElements = (elements || []).filter((el) => !el.isDeleted);
 
@@ -35,13 +55,17 @@ export function getRightmostPlacementPosition(
   };
 }
 
-// Create an AI generation placeholder rectangle using dynamic Excalidraw converter
+/**
+ * Function: createAIGenerationPlaceholderElements
+ * Description: Creates an AI generation placeholder rectangle using dynamic Excalidraw converter.
+ * Connects to: ai-chat-popover.tsx
+ */
 export async function createAIGenerationPlaceholderElements(
   x: number,
   y: number,
   title = "Generating with AI",
   width = 340,
-  height = 180
+  height = 180,
 ) {
   return convertToElements([
     {
@@ -68,10 +92,14 @@ export async function createAIGenerationPlaceholderElements(
   ]);
 }
 
-// Safely append new elements to existing canvas scene without replacing prior elements
+/**
+ * Function: appendElementsToCanvas
+ * Description: Safely appends new elements to existing canvas scene without replacing prior elements.
+ * Connects to: ai-chat-popover.tsx
+ */
 export function appendElementsToCanvas(
   excalidrawAPI: any,
-  newElements: readonly any[]
+  newElements: readonly any[],
 ): void {
   if (!excalidrawAPI || !newElements || newElements.length === 0) return;
 
@@ -82,18 +110,21 @@ export function appendElementsToCanvas(
     elements: mergedElements,
   });
 
-  // Focus view near newly created elements
   const first = newElements[0];
   if (first && typeof excalidrawAPI.scrollToContent === "function") {
     excalidrawAPI.scrollToContent(newElements, { animate: true });
   }
 }
 
-// Replace placeholder element with final generated diagram elements
+/**
+ * Function: replacePlaceholderWithGeneratedElements
+ * Description: Replaces placeholder element with final generated diagram elements.
+ * Connects to: ai-chat-popover.tsx
+ */
 export function replacePlaceholderWithGeneratedElements(
   excalidrawAPI: any,
   placeholderId: string,
-  newElements: readonly any[]
+  newElements: readonly any[],
 ): void {
   if (!excalidrawAPI || !newElements || newElements.length === 0) return;
 
