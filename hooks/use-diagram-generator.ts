@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import axios from "axios";
 import { toast } from "@/hooks/use-toast";
 import { ChatMessage } from "@/components/workspace/ai-chat/ai-chat-types";
@@ -11,14 +10,21 @@ import {
   createAIGenerationPlaceholderElements,
   convertToElements,
 } from "@/components/workspace/ai-chat/ai-canvas-generator";
+import {
+  Dispatch,
+  RefObject,
+  SetStateAction,
+  useCallback,
+  useState,
+} from "react";
 
 export function useDiagramGenerator(
-  excalidrawAPIRef: React.RefObject<any>,
-  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
+  excalidrawAPIRef: RefObject<any>,
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>,
 ) {
-  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleGenerateDiagram = React.useCallback(
+  const handleGenerateDiagram = useCallback(
     async ({
       diagramType,
       prompt,
@@ -43,7 +49,7 @@ export function useDiagramGenerator(
       const placeholderElements = await createAIGenerationPlaceholderElements(
         pos.x,
         pos.y,
-        `Generating ${diagramType}`
+        `Generating ${diagramType}`,
       );
       appendElementsToCanvas(api, placeholderElements);
 
@@ -68,7 +74,11 @@ export function useDiagramGenerator(
         const diagramPayload = res.data?.data;
         if (res.data?.success && diagramPayload?.elements) {
           const converted = await convertToElements(diagramPayload.elements);
-          replacePlaceholderWithGeneratedElements(api, placeholderId, converted);
+          replacePlaceholderWithGeneratedElements(
+            api,
+            placeholderId,
+            converted,
+          );
 
           const generatedTitle = diagramPayload.title || diagramType;
           const assistantMsg: ChatMessage = {
@@ -106,9 +116,8 @@ export function useDiagramGenerator(
         setIsGenerating(false);
       }
     },
-    [excalidrawAPIRef, setMessages]
+    [excalidrawAPIRef, setMessages],
   );
 
   return { isGenerating, handleGenerateDiagram };
 }
-

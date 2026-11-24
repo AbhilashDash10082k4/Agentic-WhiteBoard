@@ -6,7 +6,7 @@
 
 "use client";
 
-import * as React from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export interface ElementStyleRecord {
   strokeColor?: string;
@@ -135,18 +135,18 @@ export function applyStylesToExcalidraw(
  * Connects to: Whiteboard.tsx, FloatingToolBar.tsx
  */
 export function useElementStyleDefaults(boardId: string, excalidrawAPI: any) {
-  const defaultsRef = React.useRef<WorkspaceStyleDefaults>({
+  const defaultsRef = useRef<WorkspaceStyleDefaults>({
     global: {},
     byType: {},
   });
 
   // Load defaults on mount / boardId change
-  React.useEffect(() => {
+  useEffect(() => {
     defaultsRef.current = loadStyleDefaults(boardId);
   }, [boardId]);
 
   // Sync saved defaults to Excalidraw when API is ready
-  React.useEffect(() => {
+  useEffect(() => {
     if (!excalidrawAPI) return;
     const initial = defaultsRef.current.global;
     if (Object.keys(initial).length > 0) {
@@ -155,7 +155,7 @@ export function useElementStyleDefaults(boardId: string, excalidrawAPI: any) {
   }, [excalidrawAPI]);
 
   // Record style updates from an active element and set as defaults
-  const recordStyleChange = React.useCallback(
+  const recordStyleChange = useCallback(
     (elementType: string, updates: Record<string, any>) => {
       const filtered: ElementStyleRecord = {};
       let hasStyleKey = false;
@@ -200,7 +200,7 @@ export function useElementStyleDefaults(boardId: string, excalidrawAPI: any) {
   );
 
   // Apply stored defaults when switching tools (e.g., rectangle, arrow, text)
-  const applyToolDefaults = React.useCallback(
+  const applyToolDefaults = useCallback(
     (toolType: string) => {
       if (!excalidrawAPI) return;
       const toolStyles = defaultsRef.current.byType[toolType];
@@ -215,7 +215,7 @@ export function useElementStyleDefaults(boardId: string, excalidrawAPI: any) {
     [excalidrawAPI],
   );
 
-  const getDefaultsForType = React.useCallback(
+  const getDefaultsForType = useCallback(
     (elementType: string): ElementStyleRecord => {
       return {
         ...defaultsRef.current.global,

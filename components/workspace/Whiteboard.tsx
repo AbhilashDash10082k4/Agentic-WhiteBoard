@@ -6,7 +6,6 @@
 
 "use client";
 
-import * as React from "react";
 import dynamic from "next/dynamic";
 import { Loader2, Check } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -24,6 +23,7 @@ import { useDiagramGenerator } from "../../hooks/use-diagram-generator";
 import { useElementStyleDefaults } from "@/hooks/use-element-style-defaults";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
+import { useCallback, useEffect, useState } from "react";
 
 const Excalidraw = dynamic(
   async () => (await import("@excalidraw/excalidraw")).Excalidraw,
@@ -68,28 +68,28 @@ export function Whiteboard({
     scheduleAutoSave,
   } = useCanvasAutoSave(boardId);
 
-  const [activeTool, setActiveTool] = React.useState<string>("selection");
-  const [apiReady, setApiReady] = React.useState<any>(null);
+  const [activeTool, setActiveTool] = useState<string>("selection");
+  const [apiReady, setApiReady] = useState<any>(null);
 
   const { recordStyleChange, applyToolDefaults } = useElementStyleDefaults(
     boardId,
     apiReady,
   );
-  const [selectedElement, setSelectedElement] = React.useState<any>(null);
-  const [floatingPos, setFloatingPos] = React.useState<{
+  const [selectedElement, setSelectedElement] = useState<any>(null);
+  const [floatingPos, setFloatingPos] = useState<{
     x: number;
     y: number;
   } | null>(null);
-  const [viewport, setViewport] = React.useState({
+  const [viewport, setViewport] = useState({
     scrollX: 0,
     scrollY: 0,
     zoom: 1,
   });
-  const [chatMode, setChatMode] = React.useState<
-    "closed" | "popover" | "sidebar"
-  >("closed");
-  const [activeSidekick, setActiveSidekick] = React.useState<string>("general");
-  const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const [chatMode, setChatMode] = useState<"closed" | "popover" | "sidebar">(
+    "closed",
+  );
+  const [activeSidekick, setActiveSidekick] = useState<string>("general");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const { isGenerating, handleGenerateDiagram } = useDiagramGenerator(
     excalidrawAPIRef,
@@ -99,7 +99,7 @@ export function Whiteboard({
   const { resolvedTheme } = useTheme();
 
   // Close chat when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     if (chatMode === "closed") return;
     const handleClickOutside = (e: MouseEvent | PointerEvent) => {
       const target = e.target as HTMLElement | null;
@@ -116,7 +116,7 @@ export function Whiteboard({
   }, [chatMode]);
 
   // Turn selected shape into editable text container on double click
-  React.useEffect(() => {
+  useEffect(() => {
     const onDblClick = () => {
       const api = excalidrawAPIRef.current;
       if (!api) return;
@@ -138,7 +138,7 @@ export function Whiteboard({
     return () => window.removeEventListener("dblclick", onDblClick);
   }, [excalidrawAPIRef]);
 
-  const handleExcalidrawAPI = React.useCallback(
+  const handleExcalidrawAPI = useCallback(
     (api: any) => {
       excalidrawAPIRef.current = api;
       setApiReady((prev: any) => (prev === api ? prev : api));
@@ -162,7 +162,7 @@ export function Whiteboard({
     [excalidrawAPIRef, filesRef],
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (excalidrawAPIRef.current && resolvedTheme) {
       const target = resolvedTheme === "dark" ? "dark" : "light";
       if (excalidrawAPIRef.current.getAppState()?.theme !== target) {
@@ -171,7 +171,7 @@ export function Whiteboard({
     }
   }, [resolvedTheme, excalidrawAPIRef]);
 
-  const handleZoomIn = React.useCallback(() => {
+  const handleZoomIn = useCallback(() => {
     if (!excalidrawAPIRef.current) return;
     const cur = excalidrawAPIRef.current.getAppState()?.zoom?.value ?? 1;
     excalidrawAPIRef.current.updateScene({
@@ -179,7 +179,7 @@ export function Whiteboard({
     });
   }, [excalidrawAPIRef]);
 
-  const handleZoomOut = React.useCallback(() => {
+  const handleZoomOut = useCallback(() => {
     if (!excalidrawAPIRef.current) return;
     const cur = excalidrawAPIRef.current.getAppState()?.zoom?.value ?? 1;
     excalidrawAPIRef.current.updateScene({
@@ -187,17 +187,17 @@ export function Whiteboard({
     });
   }, [excalidrawAPIRef]);
 
-  const handleResetZoom = React.useCallback(() => {
+  const handleResetZoom = useCallback(() => {
     if (!excalidrawAPIRef.current) return;
     excalidrawAPIRef.current.updateScene({ appState: { zoom: { value: 1 } } });
   }, [excalidrawAPIRef]);
 
-  const handleNewChat = React.useCallback(() => {
+  const handleNewChat = useCallback(() => {
     setMessages([]);
     setActiveSidekick("general");
   }, []);
 
-  const handleSendMessage = React.useCallback((text: string) => {
+  const handleSendMessage = useCallback((text: string) => {
     setMessages((prev) => [
       ...prev,
       {
@@ -210,7 +210,7 @@ export function Whiteboard({
     setChatMode("sidebar");
   }, []);
 
-  const handleCanvasChange = React.useCallback(
+  const handleCanvasChange = useCallback(
     (elements: readonly any[], appState: any, files: any) => {
       if (!elements || !Array.isArray(elements)) return;
       if (appState?.activeTool?.type) {
